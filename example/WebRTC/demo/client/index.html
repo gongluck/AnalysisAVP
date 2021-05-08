@@ -1,0 +1,20 @@
+<html>
+    <head>
+        <title>WebRTC Client</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <h1>WebRTC Client</h1>
+
+    <div id="buttons">
+        <input id="RoomID" type="text" placeholder="请输入房间ID" maxlength="40">
+        <button id="JoinBtn" type="button">加入</button>
+        <button id="LeaveBtn" type="button">离开</button>
+    </div>
+
+    <div id="videos">
+        <video id="LocalVideo" autoplay muted playsinline>本地窗口</video>
+        <video id="RemoteVideo" autoplay playsinline>远端窗口</video>
+    </div>
+
+    <script src="js/main.js"></script>
+</html>

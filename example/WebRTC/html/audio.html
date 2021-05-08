@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+
+<html>
+
+<body>
+<audio id="local‐audio" autoplay controls>
+</audio>
+<button id="showAudio">
+    打开麦克风
+</button>
+<p>通过getUserMedia()获取音频</p>
+</body>
+
+<script>
+
+// 约束条件
+const constraints = {
+audio: true,
+video: false
+};
+
+// 处理打开麦克风成功
+function handleSuccess(stream) {
+const audio = document.querySelector("#local‐audio");
+audio.srcObject = stream;
+} 
+
+// 异常处理
+function handleError(error) {
+console.error("getUserMedia error: " + error);
+}
+
+// 处理点击
+function onOpenCamera(e) {
+// Navigator对象包含有关浏览器的信息
+navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+}
+
+// 事件响应
+document.querySelector("#showAudio").addEventListener("click", onOpenCamera);
+</script>
+
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+
+<html>
+
+<body>
+<video id="local‐video" autoplay playsinline>
+</video>
+<button id="showVideo">
+    打开摄像头
+</button>
+<p>通过getUserMedia()获取视频</p>
+</body>
+
+<script>
+
+// 约束条件
+const constraints = {
+audio: false,
+video: true
+};
+
+// 处理打开摄像头成功
+function handleSuccess(stream) {
+const video = document.querySelector("#local‐video");
+video.srcObject = stream;
+} 
+
+// 异常处理
+function handleError(error) {
+console.error("getUserMedia error: " + error);
+}
+
+// 处理点击
+function onOpenCamera(e) {
+// Navigator对象包含有关浏览器的信息
+navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+}
+
+// 事件响应
+document.querySelector("#showVideo").addEventListener("click", onOpenCamera);
+</script>
+
+</html>
