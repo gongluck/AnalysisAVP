@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck
  * @Date: 2020-09-02 23:40:40
- * @Last Modified by:   gongluck
- * @Last Modified time: 2020-09-02 23:40:40
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-05-08 20:41:35
  */
 
 #include <iostream>
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
 		}
 		av_packet_free(&pkt);
 		vend = true;
-	});
+		});
 
 	bool aend = false;
 	std::thread ath([&] {
@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
 #else
 		aend = true;
 #endif
-	});
+		});
 
 	while (!vend || !aend)
 	{
@@ -212,4 +212,4 @@ int main(int argc, char* argv[])
 	avformat_free_context(outctx);
 
 	return 0;
-	}
+}
