@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck 
  * @Date: 2020-11-02 17:08:28 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2020-11-02 17:08:28 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-05-09 19:44:17
  */
 
 #include "h264.h"
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 	std::cout << "h264 analysis" << std::endl;
 
 	std::cout << "Usage : "
-			  << "h264 h264file." << std::endl;
+			  << "thisfile h264file." << std::endl;
 
 	if (argc < 2)
 	{
