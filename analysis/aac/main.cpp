@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck 
  * @Date: 2020-11-02 23:12:27 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2020-11-02 23:12:27 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-05-09 17:51:40
  */
 
 #include "aac.h"
@@ -14,9 +14,8 @@
 int main(int argc, char *argv[])
 {
 	std::cout << "aac analysis" << std::endl;
-
 	std::cout << "Usage : "
-			  << "aac aacfile." << std::endl;
+			  << "thisfile aacfile." << std::endl;
 
 	if (argc < 2)
 	{
