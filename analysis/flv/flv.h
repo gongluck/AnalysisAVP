@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck 
  * @Date: 2020-11-02 23:16:05 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2020-11-02 23:16:05 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-05-12 23:43:00
  */
 
 #pragma once
@@ -140,7 +140,7 @@ typedef struct __FLVVIDEOTAG
 			//avcpacketype=0，则为AVCDecoderConfigurationRecord，H.264 视频解码所需要的参数集（SPS、PPS）
 			//avcpacketype=1，则为NALU（一个或多个），data[0-3]是数据长度！
 			//如果avcpacketype=2，则为空
-			unsigned char avcpacketdata[];
+			unsigned char avcpacketdata[0];
 		} avcvideopacket;
 	} videopacket;
 } FLVVIDEOTAG;
@@ -153,20 +153,20 @@ typedef struct __AVCDecoderConfigurationRecordHeader
 	uint8_t AVCLevelIndication;
 	uint8_t lengthSizeMinusOne : 2;
 	uint8_t : 6;
-	uint8_t data[]; //后续数据
+	uint8_t data[0]; //后续数据
 } AVCDecoderConfigurationRecordHeader;
 typedef struct __SequenceParameterSet
 {
 	uint8_t numOfSequenceParameterSets : 5;
 	uint8_t : 3;
 	FLVINT16 sequenceParameterSetLength;
-	uint8_t sequenceParameterSetNALUnit[];
+	uint8_t sequenceParameterSetNALUnit[0];
 } SequenceParameterSet;
 typedef struct __PictureParameterSet
 {
 	uint8_t numOfPictureParameterSets;
 	FLVINT16 pictureParameterSetLength;
-	uint8_t pictureParameterSetNALUnit[];
+	uint8_t pictureParameterSetNALUnit[0];
 } PictureParameterSet;
 /*****************************/
 /*...........................*/
@@ -182,7 +182,7 @@ typedef struct __FLVAUDIOTAG
 		struct AACAUDIOPACKET
 		{
 			uint8_t aacpackettype; //AAC_PACKET_TYPE_XXX
-			uint8_t data[];
+			uint8_t data[0];
 		} aacaudiopacket;
 	} audiopacket;
 } FLVAUDIOTAG;
@@ -193,7 +193,7 @@ typedef struct __AudioSpecificConfig
 	uint8_t : 3;
 	uint8_t ChannelConfiguration : 4;
 	uint8_t SamplingFrequencyIndexL : 1;
-	uint8_t AOTSpecificConfig[];
+	uint8_t AOTSpecificConfig[0];
 } AudioSpecificConfig;
 /*...........................*/
 /*前一个tag的长度(4字节)*/

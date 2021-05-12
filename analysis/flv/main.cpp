@@ -2,7 +2,7 @@
  * @Author: gongluck 
  * @Date: 2020-11-02 23:16:17 
  * @Last Modified by: gongluck
- * @Last Modified time: 2020-11-02 23:19:39
+ * @Last Modified time: 2021-05-12 23:43:06
  */
 
 #include "flv.h"
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	std::cout << "flv analysis" << std::endl;
 
 	std::cout << "Usage : "
-			  << "flv flvfile." << std::endl;
+			  << "thisfile flvfile." << std::endl;
 
 	if (argc < 2)
 	{
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 					}
 					std::cout.flags(f);
 #endif
-
+					//FLV文件体中的264数据前四个字节是长度值，这里将替换成startcode再保存文件
 					FLVINT32 *nalsize = reinterpret_cast<FLVINT32 *>(&pvideotag->videopacket.avcvideopacket.avcpacketdata[0]);
 					int datasize = FLVINT32TOINT((*nalsize));
 					out264.write(nalutag, 4);
