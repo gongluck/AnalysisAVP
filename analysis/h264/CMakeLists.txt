@@ -9,6 +9,9 @@ if(WIN32)
 # 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/release)
+elseif(UNIX)
+# 设置库文件的输出目录(经测试,linux环境有效)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../bin)
 endif(WIN32)
 
 # 添加源码文件到项目

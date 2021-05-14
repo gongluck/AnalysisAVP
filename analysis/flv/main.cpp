@@ -2,7 +2,7 @@
  * @Author: gongluck 
  * @Date: 2020-11-02 23:16:17 
  * @Last Modified by: gongluck
- * @Last Modified time: 2021-05-12 23:43:06
+ * @Last Modified time: 2021-05-14 14:18:19
  */
 
 #include "flv.h"
@@ -37,11 +37,11 @@ int main(int argc, char *argv[])
 	in.read(reinterpret_cast<char *>(&flvheader), sizeof(flvheader));
 	std::cout << flvheader << std::endl;
 
-	// ±£´æ264Êý¾Ý
+	// ä¿å­˜264æ•°æ®
 	std::ofstream out264("out.264", std::ios::binary);
 	char nalutag[] = {0x00, 0x00, 0x00, 0x01};
 
-	// ±£´æaacÊý¾Ý
+	// ä¿å­˜aacæ•°æ®
 	std::ofstream outaac("out.aac", std::ios::binary);
 	ADTS adts = {0};
 	set_syncword(adts, 0xFFF);
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 					}
 					std::cout.flags(f);
 #endif
-					//FLVÎÄ¼þÌåÖÐµÄ264Êý¾ÝÇ°ËÄ¸ö×Ö½ÚÊÇ³¤¶ÈÖµ£¬ÕâÀï½«Ìæ»»³ÉstartcodeÔÙ±£´æÎÄ¼þ
+					//FLVæ–‡ä»¶ä½“ä¸­çš„264æ•°æ®å‰å››ä¸ªå­—èŠ‚æ˜¯é•¿åº¦å€¼ï¼Œè¿™é‡Œå°†æ›¿æ¢æˆstartcodeå†ä¿å­˜æ–‡ä»¶
 					FLVINT32 *nalsize = reinterpret_cast<FLVINT32 *>(&pvideotag->videopacket.avcvideopacket.avcpacketdata[0]);
 					int datasize = FLVINT32TOINT((*nalsize));
 					out264.write(nalutag, 4);
