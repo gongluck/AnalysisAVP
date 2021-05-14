@@ -1,4 +1,4 @@
-ï»¿/*
+/*
  * @Author: gongluck 
  * @Date: 2020-11-02 17:08:28 
  * @Last Modified by: gongluck
@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <malloc.h>
 
 int main(int argc, char *argv[])
 {
@@ -32,7 +33,7 @@ int main(int argc, char *argv[])
 
 	unsigned char c = 0;
 	int32_t datalen = 0;
-	int step = 0; //è®°å½•0x00çš„ä¸ªæ•°
+	int step = 0; //¼ÇÂ¼0x00µÄ¸öÊý
 	while (in.read(reinterpret_cast<char *>(&c), 1))
 	{
 		if (c == 0)

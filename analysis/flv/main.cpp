@@ -1,4 +1,4 @@
-ï»¿/*
+/*
  * @Author: gongluck 
  * @Date: 2020-11-02 23:16:17 
  * @Last Modified by: gongluck
@@ -10,6 +10,7 @@
 
 #include <iomanip>
 #include <fstream>
+#include <stddef.h>
 
 //#define OUTPUTRAW
 
@@ -36,11 +37,11 @@ int main(int argc, char *argv[])
 	in.read(reinterpret_cast<char *>(&flvheader), sizeof(flvheader));
 	std::cout << flvheader << std::endl;
 
-	// ä¿å­˜264æ•°æ®
+	// ±£´æ264Êý¾Ý
 	std::ofstream out264("out.264", std::ios::binary);
 	char nalutag[] = {0x00, 0x00, 0x00, 0x01};
 
-	// ä¿å­˜aacæ•°æ®
+	// ±£´æaacÊý¾Ý
 	std::ofstream outaac("out.aac", std::ios::binary);
 	ADTS adts = {0};
 	set_syncword(adts, 0xFFF);
@@ -61,8 +62,8 @@ int main(int argc, char *argv[])
 			break;
 		std::cout << tagheader << std::endl;
 
-		auto datalen = FLVINT24TOINT(tagheader.datalen);
-		auto data = new char[datalen];
+		int datalen = FLVINT24TOINT(tagheader.datalen);
+		char* data = new char[datalen];
 		if (!in.read(data, datalen))
 			break;
 
@@ -105,7 +106,7 @@ int main(int argc, char *argv[])
 					}
 					std::cout.flags(f);
 #endif
-					//FLVæ–‡ä»¶ä½“ä¸­çš„264æ•°æ®å‰å››ä¸ªå­—èŠ‚æ˜¯é•¿åº¦å€¼ï¼Œè¿™é‡Œå°†æ›¿æ¢æˆstartcodeå†ä¿å­˜æ–‡ä»¶
+					//FLVÎÄ¼þÌåÖÐµÄ264Êý¾ÝÇ°ËÄ¸ö×Ö½ÚÊÇ³¤¶ÈÖµ£¬ÕâÀï½«Ìæ»»³ÉstartcodeÔÙ±£´æÎÄ¼þ
 					FLVINT32 *nalsize = reinterpret_cast<FLVINT32 *>(&pvideotag->videopacket.avcvideopacket.avcpacketdata[0]);
 					int datasize = FLVINT32TOINT((*nalsize));
 					out264.write(nalutag, 4);
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
 				}
 				else if (paudiotag->audiopacket.aacaudiopacket.aacpackettype == AAC_PACKET_TYPE_RAW)
 				{
-					auto datasize = FLVINT24TOINT(tagheader.datalen) - offsetof(FLVAUDIOTAG, audiopacket.aacaudiopacket.data);
+					int datasize = FLVINT24TOINT(tagheader.datalen) - offsetof(FLVAUDIOTAG, audiopacket.aacaudiopacket.data);
 #ifdef OUTPUTRAW
 					std::ios::fmtflags f(std::cout.flags());
 					for (int i = 0; i < datasize; ++i)
