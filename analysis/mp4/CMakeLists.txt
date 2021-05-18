@@ -15,8 +15,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../bin)
 endif(WIN32)
 
 # 添加源码文件到项目
-FILE(GLOB header ./*.h ../aac/*.h ../common.h)
+FILE(GLOB header ./*.h ../common.h)
 aux_source_directory(. SRCS)
-add_executable(${PROJECT_NAME} ${header} ${SRCS} ../aac/aac.cpp)
+add_executable(${PROJECT_NAME} ${header} ${SRCS})
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _d)
