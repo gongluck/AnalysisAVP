@@ -2,7 +2,7 @@
 
 Analysis of audio and video protocols
 
-![✨](https://starchart.cc/gongluck/AnalysisAVP)
+[![✨](https://starchart.cc/gongluck/AnalysisAVP)](https://starchart.cc/gongluck/AnalysisAVP)
 
 ## 音视频基本原理
 
