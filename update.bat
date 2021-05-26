@@ -1,6 +1,3 @@
-git submodule init
-git submodule update
-
-rem git submodule update --init --recursive
+git submodule update --init --recursive --remote
 
 pause
