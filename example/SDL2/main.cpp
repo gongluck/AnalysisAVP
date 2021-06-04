@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck 
  * @Date: 2021-01-23 14:12:40 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2021-01-23 14:12:40 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-06-04 17:05:35
  */
 
 #define SDL_MAIN_HANDLED
@@ -55,9 +55,7 @@ void SDLCALL mypcm(void* userdata, Uint8* stream, int len)
 int main(int argc, char* argv[])
 {
 	std::cout << "SDL2 demo" << std::endl;
-
 	std::cout << "Usage : " << "thisfilename YUVfile width height PCMfile" << std::endl;
-
 	if (argc < 5)
 	{
 		std::cerr << "please see the usage message." << std::endl;
@@ -197,8 +195,8 @@ int main(int argc, char* argv[])
 
 	SDL_Quit();
 
-	yuv.close();
 	free(yuvdata);
+	yuv.close();
 	pcm.close();
 
 	return 0;

@@ -2,7 +2,7 @@
  * @Author: gongluck
  * @Date: 2020-09-02 23:40:40
  * @Last Modified by: gongluck
- * @Last Modified time: 2021-05-20 18:53:58
+ * @Last Modified time: 2021-06-04 18:10:57
  */
 
 #include <iostream>
@@ -86,12 +86,7 @@ int main(int argc, char *argv[])
 	av_dump_format(vfmt, -1, nullptr, 0);
 
 	auto vstream = avformat_new_stream(outctx, nullptr);												  //mux step 2
-	ret = avcodec_copy_context(outctx->streams[vstream->index]->codec, vfmt->streams[0]->codec);		  //mux step 3
-	ret = avcodec_parameters_copy(outctx->streams[vstream->index]->codecpar, vfmt->streams[0]->codecpar); //mux step 4
-	if (outctx->oformat->flags & AVFMT_GLOBALHEADER)
-	{
-		outctx->streams[vstream->index]->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-	}
+	ret = avcodec_parameters_copy(outctx->streams[vstream->index]->codecpar, vfmt->streams[0]->codecpar); //mux step 3
 
 	//in audio
 	auto afmt = avformat_alloc_context();
@@ -104,15 +99,10 @@ int main(int argc, char *argv[])
 	av_dump_format(afmt, -1, nullptr, 0);
 
 	auto astream = avformat_new_stream(outctx, nullptr);
-	ret = avcodec_copy_context(outctx->streams[astream->index]->codec, afmt->streams[0]->codec);
 	ret = avcodec_parameters_copy(outctx->streams[astream->index]->codecpar, afmt->streams[0]->codecpar);
-	if (outctx->oformat->flags & AVFMT_GLOBALHEADER)
-	{
-		outctx->streams[astream->index]->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-	}
 
 	auto t = clock();
-	ret = avformat_write_header(outctx, &dict); //mux step 5
+	ret = avformat_write_header(outctx, &dict); //mux step 4
 	av_dump_format(outctx, -1, nullptr, 1);
 
 	std::mutex mutex;
@@ -128,13 +118,13 @@ int main(int argc, char *argv[])
 							if (pkt->pts == AV_NOPTS_VALUE)
 							{
 								static int64_t pts = 0;
-								static AVRational oritimebase = {vfmt->streams[0]->codec->framerate.den, vfmt->streams[0]->codec->framerate.num};
+								static AVRational oritimebase = { vfmt->streams[0]->r_frame_rate.den, vfmt->streams[0]->r_frame_rate.num};
 								pkt->pts = pkt->dts = av_rescale_q(pts++, oritimebase, outctx->streams[vstream->index]->time_base);
 							}						
 							pkt->pos = -1;
 							{
-								std::lock_guard<std::mutex> _lock(mutex);
-								ret = av_interleaved_write_frame(outctx, pkt); //mux step 6
+								std::lock_guard<std::mutex> _lock(mutex);							
+								ret = av_interleaved_write_frame(outctx, pkt); //mux step 5
 							}
 							av_packet_unref(pkt);
 							std::this_thread::sleep_for(std::chrono::nanoseconds(1));
@@ -183,7 +173,7 @@ int main(int argc, char *argv[])
 		ath.join();
 	}
 
-	ret = av_write_trailer(outctx); //mux step 7
+	ret = av_write_trailer(outctx); //mux step 6
 
 	std::cout << "used time " << difftime(clock(), t) << "ms" << std::endl;
 

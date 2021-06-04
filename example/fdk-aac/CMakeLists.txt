@@ -6,7 +6,7 @@ STRING(REGEX REPLACE ".*/(.*)" "\\1" CURRENT_FOLDER ${CMAKE_CURRENT_SOURCE_DIR})
 project(${CURRENT_FOLDER}_example)
 
 # 包含路径
-include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/fdk-aac/include)
+include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/fdk-aac/include/fdk-aac)
 include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../analysis/aac)
 
 if(WIN32)

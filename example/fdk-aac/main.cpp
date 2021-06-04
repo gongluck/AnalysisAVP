@@ -1,8 +1,8 @@
 ﻿/*
  * @Author: gongluck 
  * @Date: 2021-05-29 19:58:23 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2021-05-29 19:58:23 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-06-04 18:09:15
  */
 
 #include <iostream>
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	//设置声道数
 	ret = aacEncoder_SetParam(hencoder, AACENC_CHANNELMODE, static_cast<CHANNEL_MODE>(ichannels));
 	//设置码率
-	ret = aacEncoder_SetParam(hencoder, AACENC_BITRATE, 1000);
+	ret = aacEncoder_SetParam(hencoder, AACENC_BITRATE, 100000);//bits
 	//设置封装格式为ADTS
 	ret = aacEncoder_SetParam(hencoder, AACENC_TRANSMUX, TT_MP4_ADTS);
 	
