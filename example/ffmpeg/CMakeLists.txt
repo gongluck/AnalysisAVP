@@ -17,9 +17,13 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 if(CMAKE_CL_64)
 #win64
 link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/x64)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/x264/lib/x64)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/fdk-aac/lib/x64)
 else()
 #win32
 link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/win32)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/x264/lib/win32)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/fdk-aac/lib/win32)
 endif(CMAKE_CL_64)
 endif(WIN32)
 
@@ -30,7 +34,10 @@ add_executable(${PROJECT_NAME} ${header} ${SRCS})
 
 if(WIN32)
 #windows
-target_link_libraries(${PROJECT_NAME} avformat.lib avcodec.lib avutil.lib)
+target_link_libraries(${PROJECT_NAME} avformat.lib avcodec.lib avutil.lib swresample.lib)
+#静态库补充依赖
+target_link_libraries(${PROJECT_NAME} libx264.lib fdk-aac.lib)
+target_link_libraries(${PROJECT_NAME} Ws2_32.lib Secur32.lib Mfuuid.lib Mfplat.lib Strmiids.lib Bcrypt.lib)
 endif(WIN32)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _d)
