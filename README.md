@@ -28,3 +28,5 @@ Analysis of audio and video protocols
 ## 流媒体协议
 
 [流媒体协议](./流媒体协议.md)
+
+![仓库二维码](https://github.com/gongluck/images/blob/main/AnalysisAVP.png)
