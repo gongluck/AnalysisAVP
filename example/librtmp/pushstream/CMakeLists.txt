@@ -9,28 +9,24 @@ project(${CURRENT_FOLDER})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/release) 
 
-# 分别设置了Debug版本和Release版本库文件的输出目录(经测试,windows环境有效)
-#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../lib/debug)
-#set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../lib/release)
-
 # 包含路径
-include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/librtmp/rtmpdump-2.3/librtmp)
+include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/rtmpdump/include)
 
-if(CMAKE_CL_64)    #CMAKE的内建变量，如果是true，就说明编译器的64位的，自然可以编译64bit的程序
+if(CMAKE_CL_64)#CMAKE的内建变量，如果是true，就说明编译器的64位的，自然可以编译64bit的程序
 # 链接库目录
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/librtmp/x64)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/rtmpdump/lib/x64)
 else()
 # 链接库目录
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/librtmp/win32)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../../3rdparty/rtmpdump/lib/win32)
 endif()
 
 # 添加源码文件到项目
-FILE(GLOB header ./*.h ../../../analysis/flv/*.h)
+FILE(GLOB header ./*.h ../../../analysis/flv/*.h ../../../analysis/aac/*.h)
 aux_source_directory(. SRCS)
-add_executable(${PROJECT_NAME} ${header} ${SRCS} ../../../analysis/flv/flv.cpp)
+add_executable(${PROJECT_NAME} ${header} ${SRCS} ../../../analysis/flv/flv.cpp ../../../analysis/aac/aac.cpp)
 
 # 链接库
-target_link_libraries(${PROJECT_NAME} librtmp_msvc.lib)
+target_link_libraries(${PROJECT_NAME} librtmp.lib "WS2_32" "winmm")
 
 # 使用DEBUG_POSTFIX指定输出文件结尾对executable target(可执行文件)无效
 #set (CMAKE_DEBUG_POSTFIX d)
