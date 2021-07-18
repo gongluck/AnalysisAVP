@@ -2,7 +2,7 @@
  * @Author: gongluck
  * @Date: 2020-10-03 15:36:42
  * @Last Modified by: gongluck
- * @Last Modified time: 2020-10-03 15:37:43
+ * @Last Modified time: 2021-07-18 18:26:45
  */
 
 #include <iostream>
@@ -20,15 +20,16 @@ extern "C"
 #include "rtmp.h"
 }
 
-#define DODELAY 1
-const int presentime = 1000;
+#define DODELAY 0
+const int presentime = 100;
 
-int main(int argc, char* argv[])
+#define PUSHPACKET 1
+
+int main(int argc, char *argv[])
 {
 	std::cout << "librtmp example" << std::endl;
-
-	std::cout << "Usage : " << "thisfile flvfile pushurl." << std::endl;
-
+	std::cout << "Usage : "
+			  << "thisfile flvfile pushurl." << std::endl;
 	if (argc < 3)
 	{
 		std::cerr << "please see the usage message." << std::endl;
@@ -40,6 +41,7 @@ int main(int argc, char* argv[])
 		std::cerr << "can not open file " << argv[1] << std::endl;
 		return -1;
 	}
+	std::cout << "pusing : " << argv[1] << std::endl;
 
 #ifdef _WIN32
 	WORD version;
@@ -48,27 +50,27 @@ int main(int argc, char* argv[])
 	WSAStartup(version, &wsaData);
 #endif
 
-	RTMP* rtmp = RTMP_Alloc();
+	RTMP *rtmp = RTMP_Alloc();
 	RTMP_Init(rtmp);
 	auto rtmpres = RTMP_SetupURL(rtmp, argv[2]);
-	RTMP_EnableWrite(rtmp);//推流要设置写
+	RTMP_EnableWrite(rtmp); //推流要设置写
 	rtmpres = RTMP_Connect(rtmp, nullptr);
 	rtmpres = RTMP_ConnectStream(rtmp, 0);
 
-	FLVHEADER flvheader = { 0 };
-	in.read(reinterpret_cast<char*>(&flvheader), sizeof(flvheader));
+	FLVHEADER flvheader = {0};
+	in.read(reinterpret_cast<char *>(&flvheader), sizeof(flvheader));
 	std::cout << flvheader << std::endl;
 
-	FLVINT32 presize = { 0 };
-	in.read(reinterpret_cast<char*>(&presize), 4);
+	FLVINT32 presize = {0};
+	in.read(reinterpret_cast<char *>(&presize), 4);
 
-	RTMPPacket packet = { 0 };
+	RTMPPacket packet = {0};
 	auto begintime = RTMP_GetTime();
 	uint32_t timestamp = 0, now = 0;
 	while (true)
 	{
-		FLVTAGHEADER tagheader = { 0 };
-		if (!in.read(reinterpret_cast<char*>(&tagheader), sizeof(tagheader)))
+		FLVTAGHEADER tagheader = {0};
+		if (!in.read(reinterpret_cast<char *>(&tagheader), sizeof(tagheader)))
 		{
 			break;
 		}
@@ -83,7 +85,7 @@ int main(int argc, char* argv[])
 
 		timestamp = FLVINT32TOINT(tagheader.timestamp);
 #if DODELAY
-		CALCTIME :
+	CALCTIME:
 		now = RTMP_GetTime() - begintime;
 		if (now < timestamp + presentime)
 		{
@@ -92,15 +94,16 @@ int main(int argc, char* argv[])
 		}
 #endif
 
-		//auto len = sizeof(FLVTAGHEADER) + datalen + sizeof(presize);
-		//rtmpres = RTMP_Write(rtmp, data, len);//tagheader + data + presize
-		//if (rtmpres < len)
-		//{
-		//	std::cout << rtmpres << "\t" << len << std::endl;
-		//	break;
-		//}
-
-		rtmpres = RTMPPacket_Alloc(&packet, datalen);//分配packet的buffer
+#ifndef PUSHPACKET
+		auto len = sizeof(FLVTAGHEADER) + datalen + sizeof(presize);
+		rtmpres = RTMP_Write(rtmp, data, len); //tagheader + data + presize
+		if (rtmpres < len)
+		{
+			std::cout << rtmpres << "\t" << len << std::endl;
+			break;
+		}
+#else
+		rtmpres = RTMPPacket_Alloc(&packet, datalen); //分配packet的buffer
 		packet.m_nChannel = 0x03;
 		packet.m_headerType = RTMP_PACKET_SIZE_MEDIUM;
 		packet.m_packetType = tagheader.flvtagtype;
@@ -115,9 +118,9 @@ int main(int argc, char* argv[])
 		{
 			break;
 		}
-
-		//std::cout << "timestamp " << timestamp << "ms" << std::endl;
-		delete[]data;
+#endif
+		std::cout << "timestamp " << timestamp << "ms" << std::endl;
+		delete[] data;
 	}
 
 	RTMP_Close(rtmp);
