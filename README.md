@@ -8,6 +8,7 @@ Analysis of audio and video protocols
   - [音视频媒体格式](#音视频媒体格式)
   - [音视频框架](#音视频框架)
   - [流媒体协议](#流媒体协议)
+  - [QR Code](#qr-code)
 
 ## Stargazers over time
 
@@ -29,4 +30,10 @@ Analysis of audio and video protocols
 
 [流媒体协议](./流媒体协议.md)
 
+## QR Code
+
 ![仓库二维码](https://github.com/gongluck/images/blob/main/AnalysisAVP.png)
+
+![wx](https://github.com/gongluck/images/blob/main/wx.png)
+
+![zfb](https://github.com/gongluck/images/blob/main/zfb.png)
