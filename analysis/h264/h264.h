@@ -35,11 +35,17 @@
 #define NAL_UNIT_TYPE_END_OF_SEQUENCE 10			 // End of sequence
 #define NAL_UNIT_TYPE_END_OF_STREAM 11				 // End of stream
 #define NAL_UNIT_TYPE_FILLER 12						 // Filler data
-#define NAL_UNIT_TYPE_SPS_EXT 13					 // Sequence parameter set extension
+#define NAL_UNIT_TYPE_SPS_EXT 13					 // Sequence parameter set extension \
 													 // 14..18    // Reserved
-#define NAL_UNIT_TYPE_CODED_SLICE_AUX 19			 // Coded slice of an auxiliary coded picture without partitioning
+#define NAL_UNIT_TYPE_CODED_SLICE_AUX 19			 // Coded slice of an auxiliary coded picture without partitioning \
 													 // 20..23    // Reserved
-													 // 24..31    // Unspecified
+#define NAL_RTP_TYPE_STAP_A 24						 // STAP - A Single - time aggregation packet 5.7.1
+#define NAL_RTP_TYPE_STAP_B 25						 // STAP - B Single - time aggregation packet 5.7.1
+#define NAL_RTP_TYPE_MTAP16 26						 // MTAP16 Multi - time aggregation packet 5.7.2
+#define NAL_RTP_TYPE_MTAP24 27						 // MTAP24 Multi - time aggregation packet 5.7.2
+#define NAL_RTP_TYPE_FU_A 28						 // FU - A Fragmentation unit 5.8
+#define NAL_RTP_TYPE_FU_B 29						 // FU - B Fragmentation unit 5.8 \
+													 // 29..31    // Unspecified
 
 typedef struct __NALHEADER
 {
