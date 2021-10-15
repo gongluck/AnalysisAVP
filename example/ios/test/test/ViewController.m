@@ -17,6 +17,9 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view.
 }
+- (IBAction)test:(id)sender {
+    NSLog(@"test botton touch");
+}
 
 
 @end
