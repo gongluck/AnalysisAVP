@@ -10,22 +10,22 @@ include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp
 
 if(WIN32)
 # 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/windows/debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/windows/release)
 if(CMAKE_CL_64)
 #win64
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/x64)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/windows/x64)
 else()
 #win32
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/win32)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/windows/win32)
 endif(CMAKE_CL_64)
 endif(WIN32)
 
 if(ANDROID)
 # 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/release)
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/${ANDROID_ABI})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
+link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libwebp/lib/android/${ANDROID_ABI})
 endif(ANDROID)
 
 # 添加源码文件到项目

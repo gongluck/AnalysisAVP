@@ -39,15 +39,13 @@ int main(int argc, char *argv[])
 	int eret = 0;
 	// encode
 	WebPConfig econfig;
-	eret = WebPConfigPreset(&econfig, WEBP_PRESET_DEFAULT, 10.0f);
+	eret = WebPConfigPreset(&econfig, WEBP_PRESET_DEFAULT, 75.0f);
 	if (eret != 1)
 	{
 		std::cerr << "WebPConfigPreset failed, error:" << eret << std::endl;
 		return -1;
 	}
-	econfig.sns_strength = 0;
-	econfig.filter_sharpness = 7;
-	econfig.alpha_quality = 100;
+	econfig.use_sharp_yuv = 1;//可减少色差
 	WebPValidateConfig(&econfig); // not mandatory, but useful
 
 	WebPPicture epic;
