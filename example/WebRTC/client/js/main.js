@@ -21,7 +21,23 @@ var remoteVideo = document.querySelector("#remoteVideo");
 var websocket = new WebSocket("ws://127.0.0.1:8001");
 
 // 创建RTC连接
-var peerconn = new RTCPeerConnection();
+var iceip = "127.0.0.1";
+var config = {
+    bundlePolicy: "max-bundle",
+    rtcpMuxPolicy: "require",
+    iceTransportPolicy: "relay",//relay all
+    iceServers: [
+        {
+            "urls": ["turn:" + iceip + ":3478"],
+            "username": "gongluck",
+            "credential": "123456",
+        },
+        {
+            "urls": ["stun:" + iceip + ":3478"],
+        }
+    ]
+};
+var peerconn = new RTCPeerConnection(config);
 // 获取到打洞信息(candidate)
 peerconn.onicecandidate = function (event) {
     if (event.candidate) {
@@ -42,6 +58,23 @@ peerconn.onicecandidate = function (event) {
 // 获取到对方码流的对象句柄
 peerconn.ontrack = function (event) {
     remoteVideo.srcObject = event.streams[0];
+};
+peerconn.onconnectionstatechange = function (event) {
+    console.info("connection state : " + peerconn.connectionState);
+    switch (peerconn.connectionState) {
+        case "disconnected":
+        case "failed":
+        case "closed":
+            {
+                peerconn.removeStream(localVideo.srcObject);
+                peerconn.removeStream(remoteVideo.srcObject);
+                remoteVideo.srcObject = null;
+            }
+            break;
+    }
+};
+peerconn.oniceconnectionstatechange = function (event) {
+    console.info("ice connection state : " + peerconn.connectionState);
 };
 
 //打开websocket连接
