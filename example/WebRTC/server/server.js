@@ -108,6 +108,21 @@ var server = ws.createServer(function (conn) {
                                 jsonResPeerMsg.uid = key;
                                 jsonResPeerMsg.remoteuid = uid;
                                 jsonResPeerMsg.sdp = sdp;
+                                if (jsonMsg.cmd == SIGNAL_TYPE_CANDIDATE) {
+                                    var before = sdp.split(" ");;
+                                    console.info("got candidate: " + JSON.stringify(sdp));
+                                    var arr = [];
+                                    for (var i = 0; i < before.length; i++) {
+                                        if (i == 4 && before[i] == "555.555.555.555") {
+                                            arr.push(conn.socket.remoteAddress);
+                                            console.info(conn.socket.remoteAddress);
+                                        }
+                                        else {
+                                            arr.push(before[i]);
+                                        }
+                                    }
+                                    jsonResPeerMsg.sdp = arr.join(" ");
+                                }
                                 var message = JSON.stringify(jsonResPeerMsg);
                                 value.send(message);
                             }

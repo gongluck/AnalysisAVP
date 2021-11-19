@@ -18,6 +18,7 @@ var localVideo = document.querySelector("#localVideo");
 var remoteVideo = document.querySelector("#remoteVideo");
 
 //新建一个websocket
+//var websocket = new WebSocket("ws://122.9.72.254:10384");
 var websocket = new WebSocket("ws://127.0.0.1:8001");
 
 // 创建RTC连接
@@ -25,7 +26,7 @@ var iceip = "127.0.0.1";
 var config = {
     bundlePolicy: "max-bundle",
     rtcpMuxPolicy: "require",
-    iceTransportPolicy: "relay",//relay all
+    iceTransportPolicy: "all",//relay all
     iceServers: [
         {
             "urls": ["turn:" + iceip + ":3478"],
@@ -37,18 +38,32 @@ var config = {
         }
     ]
 };
-var peerconn = new RTCPeerConnection(config);
+var peerconn = new RTCPeerConnection();
 // 获取到打洞信息(candidate)
 peerconn.onicecandidate = function (event) {
     if (event.candidate) {
         console.info("got candidate: " + JSON.stringify(event.candidate));
+        var before = event.candidate.candidate.split(" ");
+        var mycandidate = event.candidate;
+        var arr = [];
+        for (var i = 0; i < before.length; i++) {
+            // if (i == 4) {
+            //     arr.push("555.555.555.555");//特殊IP
+            // }
+            // else {
+                arr.push(before[i]);
+            //}
+            mycandidate.candidate = arr.join(" ");
+        }
         var jsonMsg = {
             cmd: SIGNAL_TYPE_CANDIDATE,
             roomid: RoomID,
             uid: LocalID,
             remoteid: RemoteID,
-            sdp: JSON.stringify(event.candidate),
+            //sdp: JSON.stringify(event.candidate),
+            sdp: JSON.stringify(mycandidate),
         };
+        console.info("use candidate: " + JSON.stringify(jsonMsg.sdp));
         var message = JSON.stringify(jsonMsg);
         websocket.send(message);
     } else {
