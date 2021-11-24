@@ -1,3 +1,9 @@
+/*
+ * @Author: gongluck 
+ * @Date: 2021-11-24 16:52:12 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-11-24 18:10:06
+ */
 // 信令
 const SIGNAL_TYPE_JOIN = "join";
 const SIGNAL_TYPE_RESP_JOIN = "resp-join";
@@ -26,7 +32,7 @@ var iceip = "127.0.0.1";
 var config = {
     bundlePolicy: "max-bundle",
     rtcpMuxPolicy: "require",
-    iceTransportPolicy: "all",//relay all
+    iceTransportPolicy: "relay",//relay all
     iceServers: [
         {
             "urls": ["turn:" + iceip + ":3478"],
@@ -38,59 +44,65 @@ var config = {
         }
     ]
 };
-var peerconn = new RTCPeerConnection();
-// 获取到打洞信息(candidate)
-peerconn.onicecandidate = function (event) {
-    if (event.candidate) {
-        console.info("got candidate: " + JSON.stringify(event.candidate));
-        var before = event.candidate.candidate.split(" ");
-        var mycandidate = event.candidate;
-        var arr = [];
-        for (var i = 0; i < before.length; i++) {
-            // if (i == 4) {
-            //     arr.push("555.555.555.555");//特殊IP
-            // }
-            // else {
-                arr.push(before[i]);
-            //}
-            mycandidate.candidate = arr.join(" ");
-        }
-        var jsonMsg = {
-            cmd: SIGNAL_TYPE_CANDIDATE,
-            roomid: RoomID,
-            uid: LocalID,
-            remoteid: RemoteID,
-            //sdp: JSON.stringify(event.candidate),
-            sdp: JSON.stringify(mycandidate),
-        };
-        console.info("use candidate: " + JSON.stringify(jsonMsg.sdp));
-        var message = JSON.stringify(jsonMsg);
-        websocket.send(message);
-    } else {
-        console.info("end of icecandidate");
-    }
-};
-// 获取到对方码流的对象句柄
-peerconn.ontrack = function (event) {
-    remoteVideo.srcObject = event.streams[0];
-};
-peerconn.onconnectionstatechange = function (event) {
-    console.info("connection state : " + peerconn.connectionState);
-    switch (peerconn.connectionState) {
-        case "disconnected":
-        case "failed":
-        case "closed":
-            {
-                peerconn.removeStream(localVideo.srcObject);
-                peerconn.removeStream(remoteVideo.srcObject);
-                remoteVideo.srcObject = null;
+
+var peerconn = null;
+
+function doCreatePeerconnection() {
+    //peerconn = new RTCPeerConnection(config);
+    peerconn = new RTCPeerConnection();
+    // 获取到打洞信息(candidate)
+    peerconn.onicecandidate = function (event) {
+        if (event.candidate) {
+            console.info("got candidate: " + JSON.stringify(event.candidate));
+            var before = event.candidate.candidate.split(" ");
+            var mycandidate = event.candidate;
+            var arr = [];
+            for (var i = 0; i < before.length; i++) {
+                // if (i == 4) {
+                //     arr.push("555.555.555.555");//特殊IP
+                // }
+                // else {
+                    arr.push(before[i]);
+                //}
+                mycandidate.candidate = arr.join(" ");
             }
-            break;
-    }
-};
-peerconn.oniceconnectionstatechange = function (event) {
-    console.info("ice connection state : " + peerconn.connectionState);
-};
+            var jsonMsg = {
+                cmd: SIGNAL_TYPE_CANDIDATE,
+                roomid: RoomID,
+                uid: LocalID,
+                remoteid: RemoteID,
+                //sdp: JSON.stringify(event.candidate),
+                sdp: JSON.stringify(mycandidate),
+            };
+            console.info("use candidate: " + JSON.stringify(jsonMsg.sdp));
+            var message = JSON.stringify(jsonMsg);
+            websocket.send(message);
+        } else {
+            console.info("end of icecandidate");
+        }
+    };
+    // 获取到对方码流的对象句柄
+    peerconn.ontrack = function (event) {
+        remoteVideo.srcObject = event.streams[0];
+    };
+    peerconn.onconnectionstatechange = function (event) {
+        console.info("connection state : " + peerconn.connectionState);
+        switch (peerconn.connectionState) {
+            case "disconnected":
+            case "failed":
+            case "closed":
+                {
+                    peerconn.removeStream(localVideo.srcObject);
+                    peerconn.removeStream(remoteVideo.srcObject);
+                    remoteVideo.srcObject = null;
+                }
+                break;
+        }
+    };
+    peerconn.oniceconnectionstatechange = function (event) {
+        console.info("ice connection state : " + peerconn.connectionState);
+    };
+}
 
 //打开websocket连接
 websocket.onopen = function (ev) {
@@ -122,6 +134,10 @@ websocket.onmessage = function (ev) {
             {
                 if (roomid == RoomID && uid == LocalID) {
                     RemoteID = remoteuid;
+
+                    if(peerconn == null){
+                        doCreatePeerconnection();
+                    }
 
                     // 将本地流加入到RTC连接
                     // localVideo.srcObject.getTracks().forEach(function (track) {
@@ -159,6 +175,10 @@ websocket.onmessage = function (ev) {
             break;
         case SIGNAL_TYPE_OFFER:
             {
+                if(peerconn == null){
+                    doCreatePeerconnection();
+                }
+
                 // 将本地流加入到RTC连接
                 // localVideo.srcObject.getTracks().forEach(function (track) {
                 //     peerconn.addTrack(track, localVideo.srcObject);
@@ -215,11 +235,12 @@ websocket.onmessage = function (ev) {
             {
                 if (roomid == RoomID && uid == LocalID) {
                     // 将流移除出RTC连接
-                    peerconn.removeStream(localVideo.srcObject);
-                    peerconn.removeStream(remoteVideo.srcObject);
+                    //peerconn.removeStream(localVideo.srcObject);
+                    //peerconn.removeStream(remoteVideo.srcObject);
                     remoteVideo.srcObject = null;
                     //localVideo.srcObject = null;
-                    //peerconn.close();
+                    peerconn.close();
+                    peerconn = null;
                 }
             }
             break;
@@ -227,11 +248,12 @@ websocket.onmessage = function (ev) {
             {
                 if (roomid == RoomID && uid == LocalID) {
                     // 将流移除出RTC连接
-                    peerconn.removeStream(localVideo.srcObject);
-                    peerconn.removeStream(remoteVideo.srcObject);
+                    //peerconn.removeStream(localVideo.srcObject);
+                    //peerconn.removeStream(remoteVideo.srcObject);
                     remoteVideo.srcObject = null;
                     //localVideo.srcObject = null;
-                    //peerconn.close();
+                    peerconn.close();
+                    peerconn = null;
                 }
             }
             break;
