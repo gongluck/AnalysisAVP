@@ -1,5 +1,17 @@
 /*
  * @Author: gongluck 
+ * @Date: 2021-11-25 10:03:48 
+ * @Last Modified by: gongluck
+ * @Last Modified time: 2021-11-25 10:06:47
+ */
+/*
+ * @Author: gongluck 
+ * @Date: 2021-11-25 10:03:37 
+ * @Last Modified by:   gongluck 
+ * @Last Modified time: 2021-11-25 10:03:37 
+ */
+/*
+ * @Author: gongluck 
  * @Date: 2021-11-24 16:52:12 
  * @Last Modified by: gongluck
  * @Last Modified time: 2021-11-24 18:10:06
@@ -276,8 +288,10 @@ document.getElementById("joinBtn")
         }
 
         //先打开本地设备，等待P2P连接
-        navigator.mediaDevices.getUserMedia({
-            audio: false,
+        //navigator.mediaDevices.getUserMedia({
+        //屏幕共享
+        navigator.mediaDevices.getDisplayMedia({
+            audio: true,
             video: true
         })
             .then(function (stream) {

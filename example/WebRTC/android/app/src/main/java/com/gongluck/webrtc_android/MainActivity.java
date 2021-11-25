@@ -1,10 +1,16 @@
 package com.gongluck.webrtc_android;
 
+import android.content.Intent;
+import android.graphics.Point;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -31,6 +37,7 @@ import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.RendererCommon;
 import org.webrtc.RtpReceiver;
+import org.webrtc.ScreenCapturerAndroid;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.SurfaceTextureHelper;
@@ -82,6 +89,11 @@ public class MainActivity extends AppCompatActivity {
     //Opengl
     private EglBase mGlbace = null;
 
+    //Screen
+    private int PROJECTION_REQUEST_CODE = 100;
+    private Intent mIntent;
+    private boolean mIsCapturing = false;
+
     private String mRoomid = null;
     private String mUid = UUID.randomUUID().toString();
     private String mRemoteid = null;
@@ -130,14 +142,28 @@ public class MainActivity extends AppCompatActivity {
         mLocal = findViewById(R.id.view_local);
         mRemote = findViewById(R.id.view_remote);
 
+        //本地预览控件设置
+        mLocal.init(mGlbace.getEglBaseContext(), null);
+        mLocal.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_BALANCED);
+        //mLocal.setMirror(true);
+        mLocal.setEnableHardwareScaler(true);
+
+        //采集屏幕权限获取
+        MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        Intent intent = projectionManager.createScreenCaptureIntent();
+        startActivityForResult(intent, PROJECTION_REQUEST_CODE);
+
         doCreatePeerconnection();
-        doOpenLocal();
+        //doOpenLocal();
         doOpenRemote();
 
         //开始
         mStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                doOpenScreen();
+                doStartLocal();
+
                 String wsaddr = mAddr.getText().toString();
                 mRoomid = mRoom.getText().toString();
                 Log.i(TAG, "websocket addr : " + wsaddr);
@@ -222,6 +248,9 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 break;
                                 case SIGNAL_TYPE_OFFER: {
+                                    if (mPeerConn == null) {
+                                        doCreatePeerconnection();
+                                    }
                                     JSONObject sdpJson = new JSONObject(sdp);
                                     try {
                                         SessionDescription desc = new SessionDescription(SessionDescription.Type.OFFER, sdpJson.getString("sdp"));
@@ -306,7 +335,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
                 mWs.connect();
-                mVideoCapturer.startCapture(mLocal.getWidth(), mLocal.getHeight(), 30);
             }
         });
 
@@ -447,11 +475,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void doOpenLocal() {
-        mLocal.init(mGlbace.getEglBaseContext(), null);
-        mLocal.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
-        //mLocal.setMirror(true);
-        mLocal.setEnableHardwareScaler(true);
-
         //音视频采集
         CameraEnumerator enumerator = null;
         if (Camera2Enumerator.isSupported(this)) {
@@ -482,9 +505,60 @@ public class MainActivity extends AppCompatActivity {
         mPeerConn.addTrack(mVtrack);
     }
 
+    void doOpenScreen() {
+        Log.i(TAG, "mIntent : " + mIntent);
+        mVideoCapturer = new ScreenCapturerAndroid(mIntent, new MediaProjection.Callback() {
+            @Override
+            public void onStop() {
+                super.onStop();
+            }
+        });
+
+        if (mPeerConn == null) {
+            doCreatePeerconnection();
+        }
+
+        //VideoCapturer
+        VideoSource vsource = mPeerConnFactory.createVideoSource(false);
+        SurfaceTextureHelper helper = SurfaceTextureHelper.create("capturethread", mGlbace.getEglBaseContext());
+        mVideoCapturer.initialize(helper, getApplicationContext(), vsource.getCapturerObserver());
+
+        //VideoTrack
+        mVtrack = mPeerConnFactory.createVideoTrack("webrtc-android-video", vsource);
+        mVtrack.setEnabled(true);
+        mVtrack.addSink(mLocal);//预览到控件
+        mPeerConn.addTrack(mVtrack);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PROJECTION_REQUEST_CODE) {
+            Log.w(TAG, "unknow request code : " + requestCode);
+            return;
+        }
+        if (resultCode != RESULT_OK) {
+            Log.e(TAG, "permission denied !");
+            return;
+        }
+        Log.w(TAG, "got result : " + data);
+        mIntent = data;
+    }
+
+    void doStartLocal() {
+        if (mIsCapturing) {
+            return;
+        }
+        Display defaultDisplay = getWindowManager().getDefaultDisplay();
+        Point point = new Point();
+        defaultDisplay.getSize(point);
+        mVideoCapturer.startCapture(point.x, point.y, 30);
+        mIsCapturing = true;
+    }
+
     void doOpenRemote() {
         mRemote.init(mGlbace.getEglBaseContext(), null);
-        mRemote.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT);
+        mRemote.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_BALANCED);
         //mRemote.setMirror(true);
         mRemote.setEnableHardwareScaler(true);
     }
