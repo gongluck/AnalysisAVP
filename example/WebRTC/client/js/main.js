@@ -1,21 +1,10 @@
 /*
  * @Author: gongluck 
- * @Date: 2021-11-25 10:03:48 
- * @Last Modified by: gongluck
- * @Last Modified time: 2021-11-25 10:06:47
- */
-/*
- * @Author: gongluck 
- * @Date: 2021-11-25 10:03:37 
- * @Last Modified by:   gongluck 
- * @Last Modified time: 2021-11-25 10:03:37 
- */
-/*
- * @Author: gongluck 
  * @Date: 2021-11-24 16:52:12 
  * @Last Modified by: gongluck
- * @Last Modified time: 2021-11-24 18:10:06
+ * @Last Modified time: 2021-11-26 16:50:46
  */
+
 // 信令
 const SIGNAL_TYPE_JOIN = "join";
 const SIGNAL_TYPE_RESP_JOIN = "resp-join";
@@ -37,7 +26,8 @@ var remoteVideo = document.querySelector("#remoteVideo");
 
 //新建一个websocket
 //var websocket = new WebSocket("ws://122.9.72.254:10384");
-var websocket = new WebSocket("ws://127.0.0.1:8001");
+//var websocket = new WebSocket("ws://127.0.0.1:8001");
+var websocket = new WebSocket("ws://192.168.0.142:8001");
 
 // 创建RTC连接
 var iceip = "127.0.0.1";
@@ -67,17 +57,17 @@ function doCreatePeerconnection() {
         if (event.candidate) {
             console.info("got candidate: " + JSON.stringify(event.candidate));
             var before = event.candidate.candidate.split(" ");
-            var mycandidate = event.candidate;
+            var mycandidate = JSON.parse(JSON.stringify(event.candidate));//深拷贝
             var arr = [];
             for (var i = 0; i < before.length; i++) {
                 // if (i == 4) {
                 //     arr.push("555.555.555.555");//特殊IP
-                // }
+                // } 
                 // else {
-                    arr.push(before[i]);
-                //}
-                mycandidate.candidate = arr.join(" ");
+                arr.push(before[i]);
+                // }
             }
+            mycandidate.candidate = arr.join(" ");
             var jsonMsg = {
                 cmd: SIGNAL_TYPE_CANDIDATE,
                 roomid: RoomID,
@@ -147,7 +137,7 @@ websocket.onmessage = function (ev) {
                 if (roomid == RoomID && uid == LocalID) {
                     RemoteID = remoteuid;
 
-                    if(peerconn == null){
+                    if (peerconn == null) {
                         doCreatePeerconnection();
                     }
 
@@ -187,7 +177,7 @@ websocket.onmessage = function (ev) {
             break;
         case SIGNAL_TYPE_OFFER:
             {
-                if(peerconn == null){
+                if (peerconn == null) {
                     doCreatePeerconnection();
                 }
 

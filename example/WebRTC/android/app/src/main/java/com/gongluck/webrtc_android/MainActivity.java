@@ -425,7 +425,25 @@ public class MainActivity extends AppCompatActivity {
                     json.put("remotid", mRemoteid);
                     jsonSdp.put("sdpMid", iceCandidate.sdpMid);
                     jsonSdp.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
-                    jsonSdp.put("candidate", iceCandidate.sdp);
+                    String mycandidate = iceCandidate.sdp;
+//                    String before[] = iceCandidate.sdp.split(" ");
+//                    String mycandidate = ""; //iceCandidate.sdp;
+//                    String arr[] = new String[before.length];
+//                    for (int i = 0; i < before.length; i++) {
+//                        if (i == 4) {
+//                            mycandidate += " " + before[i];
+//                            //mycandidate += " 999.999.999.999";//特殊IP
+//                        } else if(i == 5){
+//                            mycandidate += " " + before[i];
+//                            //mycandidate += " 10384";//特殊port
+//                        }
+//                        else {
+//                            mycandidate += " " + before[i];
+//                        }
+//                    }
+
+                    Log.i(TAG, "use candidate : " + mycandidate);
+                    jsonSdp.put("candidate", mycandidate);
                     json.put("sdp", jsonSdp.toString());
                     mWs.send(json.toString());
                     Log.i(TAG, "send candidate msg : " + json.toString());

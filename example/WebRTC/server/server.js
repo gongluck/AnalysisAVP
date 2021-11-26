@@ -1,3 +1,10 @@
+/*
+ * @Author: gongluck 
+ * @Date: 2021-11-26 16:50:37 
+ * @Last Modified by:   gongluck 
+ * @Last Modified time: 2021-11-26 16:50:37 
+ */
+
 // 信令
 const SIGNAL_TYPE_JOIN = "join";
 const SIGNAL_TYPE_RESP_JOIN = "resp-join";
@@ -107,22 +114,31 @@ var server = ws.createServer(function (conn) {
                                 jsonResPeerMsg.roomid = roomid;
                                 jsonResPeerMsg.uid = key;
                                 jsonResPeerMsg.remoteuid = uid;
-                                jsonResPeerMsg.sdp = sdp;
-                                if (jsonMsg.cmd == SIGNAL_TYPE_CANDIDATE) {
-                                    var before = sdp.split(" ");;
-                                    console.info("got candidate: " + JSON.stringify(sdp));
-                                    var arr = [];
-                                    for (var i = 0; i < before.length; i++) {
-                                        if (i == 4 && before[i] == "555.555.555.555") {
-                                            arr.push(conn.socket.remoteAddress);
-                                            console.info(conn.socket.remoteAddress);
-                                        }
-                                        else {
-                                            arr.push(before[i]);
-                                        }
-                                    }
-                                    jsonResPeerMsg.sdp = arr.join(" ");
-                                }
+                                jsonResPeerMsg.sdp = JSON.parse(JSON.stringify(sdp));//深拷贝
+                                // if (jsonMsg.cmd == SIGNAL_TYPE_CANDIDATE) {
+                                //     var before = sdp.split(" ");;
+                                //     console.info("got candidate: " + JSON.stringify(sdp));
+                                //     var arr = [];
+                                //     for (var i = 0; i < before.length; i++) {
+                                //         console.info("i = " + i + " data : " + before[i]);
+                                //         if (i == 4 && before[i] == "555.555.555.555") { //web special
+                                //             arr.push(conn.socket.remoteAddress);
+                                //             console.info(conn.socket.remoteAddress);
+                                //         } else if (i == 4 && before[i] == "999.999.999.999") { //android special
+                                //             arr.push("122.9.72.254");
+                                //             console.info("122.9.72.254");
+                                //         } else if (i == 5 && before[i] == "specialport") { //android special
+                                //             arr.push("10385");
+                                //             console.info("10385");
+                                //         }
+                                //         else {
+                                //             arr.push(before[i]);
+                                //         }
+                                //     }
+                                //     jsonResPeerMsg.sdp = arr.join(" ");
+                                // }
+                                jsonResPeerMsg.sdp = jsonResPeerMsg.sdp.replace(/555.555.555.555/, conn.socket.remoteAddress);
+                                jsonResPeerMsg.sdp = jsonResPeerMsg.sdp.replace(/999.999.999.999/, "122.9.72.254");
                                 var message = JSON.stringify(jsonResPeerMsg);
                                 value.send(message);
                             }
@@ -151,4 +167,4 @@ var server = ws.createServer(function (conn) {
     conn.on("error", function (ev) {
         console.error("错误:" + ev);
     });
-}).listen(8001);
+}).listen(8001, "0.0.0.0");
