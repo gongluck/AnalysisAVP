@@ -21,6 +21,7 @@ import android.opengl.GLES11Ext;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
@@ -41,8 +42,12 @@ public class MainActivity extends AppCompatActivity {
     private Button mStart = null;
     private Button mStop = null;
 
-    private int mWidth = 640;
-    private int mHeight = 480;
+    private int mWidth = 1280;
+    private int mHeight = 720;
+
+    //rotation
+    int mRotation = 0;
+    boolean usefacing = true;//是否使用前置摄像头
 
     //Camera
     private Camera mCamera = null;
@@ -73,7 +78,7 @@ public class MainActivity extends AppCompatActivity {
             int imageFormat = parameters.getPreviewFormat();
             int w = parameters.getPreviewSize().width;
             int h = parameters.getPreviewSize().height;
-            //Log.i(TAG, "data info:\nformat = " + imageFormat + "\nwidth = " + w + "\nheight = " + h);
+            Log.i(TAG, "data info:\nformat = " + imageFormat + "\nwidth = " + w + "\nheight = " + h);
 
             try {
                 //保存yuv
@@ -104,8 +109,7 @@ public class MainActivity extends AppCompatActivity {
                     Bitmap bm = BitmapFactory.decodeByteArray(stream.toByteArray(), 0, stream.size());
                     stream.close();
                     mImageView.setImageBitmap(bm);
-
-                    mImageView.setRotation(270);
+                    mImageView.setRotation(0);
                 }
 
                 //推送待编码数据
@@ -155,16 +159,18 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "There has " + nums + " camera devices.");
 
         Camera.CameraInfo camerainfo = new Camera.CameraInfo();
-        int facingdevice = -1;
+        int device = -1;
         for (int i = 0; i < nums; ++i) {
             Camera.getCameraInfo(i, camerainfo);
             Log.i(TAG, "The " + i + " camera device info:\nfacing=" + camerainfo.facing);
-            if (camerainfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                facingdevice = i;
+            if (usefacing && camerainfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                device = i;
+            } else if (!usefacing && camerainfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                device = i;
             }
         }
 
-        mCamera = Camera.open(facingdevice);
+        mCamera = Camera.open(device);
         Camera.Parameters cameraParams = mCamera.getParameters();
         List<Integer> formats = cameraParams.getSupportedPictureFormats();
         for (int i : formats) {
@@ -189,10 +195,16 @@ public class MainActivity extends AppCompatActivity {
         cameraParams.setPictureFormat(ImageFormat.NV21);
         cameraParams.setPictureSize(mWidth, mHeight);
         cameraParams.setZoom(0);
-        cameraParams.setRotation(90);
+        cameraParams.setRotation(0);
+        if(!usefacing)
+        {
+            cameraParams.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        }
         mCamera.setParameters(cameraParams);
 
-        mCamera.setDisplayOrientation(90);
+        mRotation = this.getWindowManager().getDefaultDisplay().getRotation();
+        Log.i(TAG, "rotation : " + mRotation);
+        mCamera.setDisplayOrientation(90 * ((5 - mRotation) % 4));//mUseSurfacePreview==true
         mCamera.startPreview();
         mCamera.setPreviewCallbackWithBuffer(mPrewviewCallback);
         mCamera.addCallbackBuffer(mPreviewData);
@@ -206,15 +218,15 @@ public class MainActivity extends AppCompatActivity {
             String codecname = null;
             int counts = MediaCodecList.getCodecCount();
             Log.i(TAG, "Support codec counts : " + counts);
-            for(int i = 0; i<counts ;++i){
+            for (int i = 0; i < counts; ++i) {
                 MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
                 Log.i(TAG, "Support codec : " + info.getName() +
                         ", isencoder : " + info.isEncoder() +
                         ", ishwaccel : " + info.isHardwareAccelerated() +
                         ", issoftware : " + info.isSoftwareOnly());
-                for(String type : info.getSupportedTypes()){
+                for (String type : info.getSupportedTypes()) {
                     Log.i(TAG, "\tsupport type : " + type);
-                    if(type.equals(MediaFormat.MIMETYPE_VIDEO_AVC) && info.isEncoder() && info.isHardwareAccelerated()){
+                    if (type.equals(MediaFormat.MIMETYPE_VIDEO_AVC) && info.isEncoder() && info.isHardwareAccelerated()) {
                         codecname = info.getName();
                         Log.i(TAG, "\tmaybe use : " + codecname);
                     }
@@ -252,11 +264,13 @@ public class MainActivity extends AppCompatActivity {
                             input = mYUVQueue.poll();
                             //靠这里打日志发现没有调用addCallbackBuffer的问题
                             //Log.i(TAG, "output szie : " + input.length);
-                            byte[] rotate = new byte[mWidth * mHeight * 3 / 2];
-                            byte[] nv21 = new byte[mWidth * mHeight * 3 / 2];
-                            NV21_rotate_to_90(input, rotate, mWidth, mHeight);
-                            NV21ToNV12(rotate, nv21, mHeight, mWidth);
-                            input = nv21;
+                            //demo只考虑竖屏
+                            if (usefacing) {
+                                input = NV21ToNV12(Rotate270(input, mWidth, mHeight), mHeight, mWidth);
+                                Mirror(input, mHeight, mWidth);
+                            } else {
+                                input = NV21ToNV12(Rotate90(input, mWidth, mHeight), mHeight, mWidth);
+                            }
                         }
                         if (input != null) {
                             try {
@@ -350,57 +364,130 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "...Stop");
     }
 
-    private byte[] NV21_rotate_to_90(byte[] nv21_data, byte[] nv21_rotated, int width, int height)
-    {
-        int y_size = width * height;
-        int buffser_size = y_size * 3 / 2;
-
-        // Rotate the Y luma
-        int i = 0;
-        int startPos = (height - 1)*width;
-        for (int x = 0; x < width; x++)
-        {
-            int offset = startPos;
-            for (int y = height - 1; y >= 0; y--)
-            {
-                nv21_rotated[i] = nv21_data[offset + x];
-                i++;
-                offset -= width;
-            }
-        }
-
-        // Rotate the U and V color components
-        i = buffser_size - 1;
-        for (int x = width - 1; x > 0; x = x - 2)
-        {
-            int offset = y_size;
-            for (int y = 0; y < height / 2; y++)
-            {
-                nv21_rotated[i] = nv21_data[offset + x];
-                i--;
-                nv21_rotated[i] = nv21_data[offset + (x - 1)];
-                i--;
-                offset += width;
-            }
-        }
-        return nv21_rotated;
-    }
-
-    private void NV21ToNV12(byte[] nv21, byte[] nv12, int width, int height) {
-        if (nv21 == null || nv12 == null) {
-            return;
-        }
+    private byte[] NV21ToNV12(byte[] nv21, int width, int height) {
+        byte[] yuv = new byte[width * height * 3 / 2];
         int framesize = width * height;
         int i = 0, j = 0;
-        //System.arraycopy(nv21, 0, nv12, 0, framesize);
         for (i = 0; i < framesize; i++) {
-            nv12[i] = nv21[i];
+            yuv[i] = nv21[i];
         }
         for (j = 0; j < framesize / 2; j += 2) {
-            nv12[framesize + j - 1] = nv21[j + framesize];
+            yuv[framesize + j - 1] = nv21[j + framesize];
         }
         for (j = 0; j < framesize / 2; j += 2) {
-            nv12[framesize + j] = nv21[j + framesize - 1];
+            yuv[framesize + j] = nv21[j + framesize - 1];
+        }
+        return yuv;
+    }
+
+    private byte[] Rotate90(byte[] src, int width, int height) {
+        byte[] yuv = new byte[width * height * 3 / 2];
+        int i = 0;
+        for (int x = 0; x < width; x++) {
+            for (int y = height - 1; y >= 0; y--) {
+                yuv[i] = src[y * width + x];
+                i++;
+            }
+        }
+        i = width * height * 3 / 2 - 1;
+        for (int x = width - 1; x > 0; x = x - 2) {
+            for (int y = 0; y < height / 2; y++) {
+                yuv[i] = src[(width * height) + (y * width) + x];
+                i--;
+                yuv[i] = src[(width * height) + (y * width)
+                        + (x - 1)];
+                i--;
+            }
+        }
+        return yuv;
+    }
+
+    private byte[] Rotate180(byte[] src, int width, int height) {
+        byte[] yuv = new byte[width * height * 3 / 2];
+        int i = 0;
+        int count = 0;
+        for (i = width * height - 1; i >= 0; i--) {
+            yuv[count] = src[i];
+            count++;
+        }
+        i = width * height * 3 / 2 - 1;
+        for (i = width * height * 3 / 2 - 1; i >= width
+                * height; i -= 2) {
+            yuv[count++] = src[i - 1];
+            yuv[count++] = src[i];
+        }
+        return yuv;
+    }
+
+    private byte[] Rotate270(byte[] src, int width,
+                             int height) {
+        byte[] yuv = new byte[width * height * 3 / 2];
+        int nWidth = 0, nHeight = 0;
+        int wh = 0;
+        int uvHeight = 0;
+        if (width != nWidth || height != nHeight) {
+            nWidth = width;
+            nHeight = height;
+            wh = width * height;
+            uvHeight = height >> 1;// uvHeight = height / 2
+        }
+
+        int k = 0;
+        for (int i = 0; i < width; i++) {
+            int nPos = 0;
+            for (int j = 0; j < height; j++) {
+                yuv[k] = src[nPos + i];
+                k++;
+                nPos += width;
+            }
+        }
+        for (int i = 0; i < width; i += 2) {
+            int nPos = wh;
+            for (int j = 0; j < uvHeight; j++) {
+                yuv[k] = src[nPos + i];
+                yuv[k + 1] = src[nPos + i + 1];
+                k += 2;
+                nPos += width;
+            }
+        }
+        return Rotate180(Rotate90(src, width, height), width, height);
+    }
+
+    //翻转
+    private void Mirror(byte[] src, int w, int h) { //src是原始yuv数组
+        int i;
+        int index;
+        byte temp;
+        int a, b;
+        //mirror y
+        for (i = 0; i < h; i++) {
+            a = i * w;
+            b = (i + 1) * w - 1;
+            while (a < b) {
+                temp = src[a];
+                src[a] = src[b];
+                src[b] = temp;
+                a++;
+                b--;
+            }
+        }
+
+        // mirror u and v
+        index = w * h;
+        for (i = 0; i < h / 2; i++) {
+            a = i * w;
+            b = (i + 1) * w - 2;
+            while (a < b) {
+                temp = src[a + index];
+                src[a + index] = src[b + index];
+                src[b + index] = temp;
+
+                temp = src[a + index + 1];
+                src[a + index + 1] = src[b + index + 1];
+                src[b + index + 1] = temp;
+                a += 2;
+                b -= 2;
+            }
         }
     }
 }
