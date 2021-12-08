@@ -42,8 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private Button mStart = null;
     private Button mStop = null;
 
-    private int mWidth = 1280;
-    private int mHeight = 720;
+    private int mWidth = 640;
+    private int mHeight = 480;
 
     //rotation
     int mRotation = 0;
@@ -59,7 +59,8 @@ public class MainActivity extends AppCompatActivity {
     private MediaCodec mMediaCodec = null;
     private BufferedOutputStream mBufferedOutputStream = null;
     private boolean mEncoding = false;
-    private int mQueueSize = 10;
+    private int mFramerate = 15;
+    private int mQueueSize = 60;
     private ArrayBlockingQueue<byte[]> mYUVQueue = new ArrayBlockingQueue<byte[]>(mQueueSize);
     private byte[] mSpsPps = null;
     private int mSleepTime = 12000;
@@ -196,10 +197,13 @@ public class MainActivity extends AppCompatActivity {
         cameraParams.setPictureSize(mWidth, mHeight);
         cameraParams.setZoom(0);
         cameraParams.setRotation(0);
-        if(!usefacing)
-        {
-            cameraParams.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+
+        List<String> focusModes = cameraParams.getSupportedFocusModes();
+        String supportedMode = focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) ? Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO : "";
+        if (!supportedMode.equals("")) {
+            cameraParams.setFocusMode(supportedMode);
         }
+
         mCamera.setParameters(cameraParams);
 
         mRotation = this.getWindowManager().getDefaultDisplay().getRotation();
@@ -234,11 +238,14 @@ public class MainActivity extends AppCompatActivity {
             }
             Log.i(TAG, "++++ use : " + codecname);
 
-            //编码h264
+            //编码h264，下面参数都是限制输出的，所以下面dequeueInputBuffer和dequeueOutputBuffer的成功频率可以大于帧率参数
             MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mHeight, mWidth);
+            mediaFormat.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline);
+            mediaFormat.setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel1);
             mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
-            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, mWidth * mHeight * 1);
-            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+            mediaFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, mWidth * mHeight / 10);
+            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mFramerate);//GOP
             mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);//framerate为单位
 
             //mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
@@ -257,9 +264,9 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void run() {
                     mEncoding = true;
-                    byte[] input = null;
                     while (mEncoding) {
                         long pts = System.nanoTime();
+                        byte[] input = null;
                         if (mYUVQueue.size() > 0) {
                             input = mYUVQueue.poll();
                             //靠这里打日志发现没有调用addCallbackBuffer的问题
@@ -288,6 +295,7 @@ public class MainActivity extends AppCompatActivity {
                                 int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, mSleepTime);
                                 //Log.i(TAG, "outputBufferIndex : " + outputBufferIndex);
                                 while (outputBufferIndex >= 0) {
+                                    //Log.i(TAG, "outputBufferIndex : " + outputBufferIndex);
                                     ByteBuffer outputBuffer = mMediaCodec.getOutputBuffers()[outputBufferIndex];
                                     byte[] outData = new byte[bufferInfo.size];
                                     outputBuffer.get(outData);
