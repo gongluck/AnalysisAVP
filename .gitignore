@@ -33,3 +33,6 @@ Samples
 *\captures
 *\.externalNativeBuild
 *\.cxx
+
+#apple
+*.xcuserstate
