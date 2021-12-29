@@ -23,17 +23,18 @@
 // strong强引用，与shared_ptr类似
 @property(nonatomic)int32_t width;
 @property(nonatomic)int32_t height;
-@property(nonatomic)NSInteger fps;
-@property(nonatomic)NSInteger bitrate;
-@property(nonatomic)NSInteger framecount;
+@property(nonatomic)int32_t fps;
+@property(nonatomic)int32_t bitrate;
 @property(nonatomic)NSInteger lastime;//记录采集时间
 @property(nonatomic)NSInteger firstime;//记录编码首帧时间
+@property(nonatomic)bool facing;//是否使用前置摄像头
 @property(nonatomic,strong)AVCaptureSession* captureSession;//采集会话
 @property(nonatomic,strong)AVCaptureDeviceInput* input;
 @property(nonatomic,strong)AVCaptureVideoDataOutput* output;
 @property(nonatomic,strong)dispatch_queue_t dataCallbackQueue;
 // assign简单赋值，不更改引用计数，不考虑内存管理；常常用于基础数据类型
 @property(nonatomic,assign)VTCompressionSessionRef compressionSession;//编码会话
+@property(nonatomic)FILE* hfile;//保存文件
 @end
 
 //FOURCHARCODE to NSString
@@ -46,15 +47,24 @@
     NSError* error;
     //获取摄像头设备对象
     AVCaptureDevice * device;
-    NSArray<AVCaptureDevice *> * devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    NSArray<AVCaptureDevice *> *devices;
+    AVCaptureDevicePosition position = _facing ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
+    if (@available(iOS 10.0, *)) {
+        AVCaptureDeviceDiscoverySession *deviceDiscoverySession =  [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:@[AVCaptureDeviceTypeBuiltInWideAngleCamera] mediaType:AVMediaTypeVideo position:position];
+        devices = deviceDiscoverySession.devices;
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        devices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+#pragma clang diagnostic pop
+    }
     for(AVCaptureDevice * dev in devices)
     {
         NSLog(@"device : %@", dev);
-        device = dev;
-        if([dev position] == AVCaptureDevicePositionFront)
+        if([dev position] == position)
         {
-            //device = dev;
-            //break;
+            device = dev;
+            break;
         }
     }
     //设置摄像头帧率，作用不大
@@ -97,7 +107,7 @@
     }
     //设置输出格式
     [_output setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_420YpCbCr8BiPlanarFullRange] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
-    //创建功能会话对象
+    //创建采集功能会话对象
     _captureSession = [[AVCaptureSession alloc] init];
     // 改变会话的配置前一定要先开启配置，配置完成后提交配置改变
     [_captureSession beginConfiguration];
@@ -177,7 +187,7 @@
                                                  NULL,      // 源像素缓冲区所需的属性，用于创建像素缓冲池。如果不希望视频工具箱为您创建一个，请传递NULL
                                                  NULL,      // 编码数据的分配器。传递NULL以使用默认分配器。
                                                  VTCompressionOutputCallbackH264,   // 当一次编码结束会在该函数进行回调,可以在该函数中将数据,写入文件中
-                                                 (__bridge void *)(self),  // outputCallbackRefCon
+                                                 (__bridge  void*)self,  // outputCallbackRefCon
                                                  &_compressionSession);    // 指向一个变量以接收的编码会话。
     if (status != noErr){
         NSLog(@"VTCompressionSessionCreate failed : %d", status);
@@ -202,7 +212,7 @@
         return -1;
     }
     //设置gop
-    status = VTSessionSetProperty(_compressionSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, (__bridge CFTypeRef)(@(_fps)));
+    status = VTSessionSetProperty(_compressionSession, kVTCompressionPropertyKey_MaxKeyFrameInterval, (__bridge CFTypeRef)(@(_fps*10)));
     if (status != noErr){
         NSLog(@"kVTCompressionPropertyKey_MaxKeyFrameInterval failed : %d", status);
         return -1;
@@ -250,6 +260,14 @@
         {
             return;
         }
+        if(_hfile == NULL)
+        {
+            NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *wdocpath = [docpath lastObject];
+            NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.h264"];
+            NSLog(@"finename:%@", filename);
+            _hfile = fopen([filename UTF8String], "wb");
+        }
         [sender setTitle:@"stop" forState:UIControlStateNormal];
     }
     else if([sender.titleLabel.text  isEqual: @"stop"])
@@ -260,6 +278,11 @@
         }
         _lastime = -1;
         _firstime = -1;
+        if(_hfile != NULL)
+        {
+            fclose(_hfile);
+            _hfile = NULL;
+        }
         [sender setTitle:@"start" forState:UIControlStateNormal];
     }
 }
@@ -271,9 +294,10 @@
     _height = 480;
     _fps = 30;
     _bitrate = _width * _height;
-    _framecount = 0;
     _lastime = -1;
     _firstime = -1;
+    _facing = true;
+    _hfile = NULL;
 }
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
@@ -297,7 +321,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }else{
         _lastime = cur - went % duration;
     }
-    
     //NSLog(@"captureOutput:%@,%@,%@", output, sampleBuffer, connection);
     CMVideoFormatDescriptionRef description = CMSampleBufferGetFormatDescription(sampleBuffer);
     //NSLog(@"captureOutput:%@", description);
@@ -309,46 +332,46 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //NSString *scodectype = FOURCC2STR(codectype);
     //NSLog(@"codec type:%@", scodectype);
     
-//    NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-//    NSString *wdocpath = [docpath lastObject];
-//    NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.yuv"];
-//    NSLog(@"filename : %@", filename);
-//    //使用C函数写文件
-//    FILE* hfile = fopen([filename UTF8String], "ab+");
-//    //lock
-//    //CVPixelBufferRef是CVImageBufferRef的别名，两者操作几乎一致。
-//    CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-//    //CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-//    //需先用CVPixelBufferLockBaseAddress()锁定地址才能从主存访问，否则调用CVPixelBufferGetBaseAddressOfPlane等函数则返回NULL或无效值。
-//    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
-//    //NSLog(@"imageBuffer:%@", imageBuffer);
-//    if(CVPixelBufferIsPlanar(imageBuffer))
-//    {
-//        size_t planars = CVPixelBufferGetPlaneCount(imageBuffer);
-//        if(planars == 2)
-//        {
-//            size_t stride = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
-//            size_t width = CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
-//            size_t height = CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
-//            NSLog(@"buffer stride : %ld, w : %ld, h : %ld", stride, width, height);
-//            void* Y = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
-//            void* UV = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 1);
-//            if(Y != nil && UV != nil)
-//            {
-//                NSLog(@"frame size %lu",stride * height*3/2);
-//                fwrite(Y, 1, stride * height, hfile);
-//                fwrite(UV, 1, stride * height / 2, hfile);
-//            }
-//        }
-//    }else{
-//        void* YUV = CVPixelBufferGetBaseAddress(imageBuffer);
-//        size_t size = CVPixelBufferGetDataSize(imageBuffer);
-//        NSLog(@"frame size %lu",size);
-//        fwrite(YUV, 1, size, hfile);
-//    }
-//    fclose(hfile);
-//    //unlock
-//    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+    //    NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+    //    NSString *wdocpath = [docpath lastObject];
+    //    NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.yuv"];
+    //    NSLog(@"filename : %@", filename);
+    //    //使用C函数写文件
+    //    FILE* hfile = fopen([filename UTF8String], "ab+");
+    //    //lock
+    //    //CVPixelBufferRef是CVImageBufferRef的别名，两者操作几乎一致。
+    //    CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    //    //CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    //    //需先用CVPixelBufferLockBaseAddress()锁定地址才能从主存访问，否则调用CVPixelBufferGetBaseAddressOfPlane等函数则返回NULL或无效值。
+    //    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+    //    //NSLog(@"imageBuffer:%@", imageBuffer);
+    //    if(CVPixelBufferIsPlanar(imageBuffer))
+    //    {
+    //        size_t planars = CVPixelBufferGetPlaneCount(imageBuffer);
+    //        if(planars == 2)
+    //        {
+    //            size_t stride = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
+    //            size_t width = CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
+    //            size_t height = CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
+    //            NSLog(@"buffer stride : %ld, w : %ld, h : %ld", stride, width, height);
+    //            void* Y = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
+    //            void* UV = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 1);
+    //            if(Y != nil && UV != nil)
+    //            {
+    //                NSLog(@"frame size %lu",stride * height*3/2);
+    //                fwrite(Y, 1, stride * height, hfile);
+    //                fwrite(UV, 1, stride * height / 2, hfile);
+    //            }
+    //        }
+    //    }else{
+    //        void* YUV = CVPixelBufferGetBaseAddress(imageBuffer);
+    //        size_t size = CVPixelBufferGetDataSize(imageBuffer);
+    //        NSLog(@"frame size %lu",size);
+    //        fwrite(YUV, 1, size, hfile);
+    //    }
+    //    fclose(hfile);
+    //    //unlock
+    //    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
     
     //编码264
     //将sampleBuffer转成imageBuffer
@@ -372,12 +395,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                                                           NULL,
                                                           &flags
                                                           );
-
     if (statusCode != noErr) {
-        NSLog(@"VTCompressionSessionEncodeFrame failed %d", (int)statusCode);
-        //VTCompressionSessionInvalidate(_compressionSession);
-        //CFRelease(_compressionSession);
-        //_compressionSession = NULL;
+        NSLog(@"VTCompressionSessionEncodeFrame failed %d", statusCode);
+        [self doEncodeDestroy];
     }
 }
 
@@ -395,17 +415,7 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
         NSLog(@"sampleBuffer data is not ready ");
         return;
     }
-    
-    static FILE* hfile = NULL;
-    if(hfile == NULL)
-    {
-        NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-        NSString *wdocpath = [docpath lastObject];
-        NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.h264"];
-        NSLog(@"finename:%@", filename);
-        hfile = fopen([filename UTF8String], "wb");
-    }
-        
+    ViewController* _self = (__bridge ViewController*)outputCallbackRefCon;
     //判断是否是关键帧
     bool isKeyframe = !CFDictionaryContainsKey((CFArrayGetValueAtIndex(CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, true), 0)), kCMSampleAttachmentKey_NotSync);
     if (isKeyframe)
@@ -420,19 +430,22 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
         size_t pparameterSetSize, pparameterSetCount;
         const uint8_t *pparameterSet;
         CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 1, &pparameterSet, &pparameterSetSize, &pparameterSetCount, 0);
-         
         //NSLog(@"sps size : %d", sparameterSetSize);
         //NSLog(@"pps size : %d", pparameterSetSize);
-        char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
-        fwrite(naluhead, 1, 4, hfile);
-        fwrite(sparameterSet, 1, sparameterSetSize, hfile);
-        fwrite(naluhead, 1, 4, hfile);
-        fwrite(pparameterSet, 1, pparameterSetSize, hfile);
+        if(_self.hfile != NULL)
+        {
+            //NSLog(@"write file");
+            char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
+            fwrite(naluhead, 1, 4, _self.hfile);
+            fwrite(sparameterSet, 1, sparameterSetSize, _self.hfile);
+            fwrite(naluhead, 1, 4, _self.hfile);
+            fwrite(pparameterSet, 1, pparameterSetSize, _self.hfile);
+            fflush(_self.hfile);
+        }
     }
-        
+    //Float64 pts = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer));
+    //NSLog(@"output pts : %lf", pts);
     // 获取数据块
-    Float64 pts = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer));
-    NSLog(@"output pts : %lf", pts);
     CMBlockBufferRef dataBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
     size_t length, total;
     char *data;
@@ -440,7 +453,6 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
     if (ret == noErr) {
         size_t offset = 0;
         static const int AVCCHeaderLength = 4; // 返回的nalu数据前四个字节不是0001的startcode，而是大端模式的帧长度length
-            
         // 循环获取nalu数据
         while (offset < total - AVCCHeaderLength) {
             uint32_t nalulen = 0;
@@ -449,18 +461,18 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
             // 从大端转系统端
             nalulen = CFSwapInt32BigToHost(nalulen);
             //NSLog(@"nalu size : %d", nalulen);
-            
-            char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
-            fwrite(naluhead, 1, 4, hfile);
-            fwrite(data + offset + AVCCHeaderLength, 1, nalulen, hfile);
-                
+            if(_self.hfile != NULL)
+            {
+                char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
+                fwrite(naluhead, 1, 4, _self.hfile);
+                fwrite(data + offset + AVCCHeaderLength, 1, nalulen, _self.hfile);
+                fflush(_self.hfile);
+            }
             // 移动到写一个块，转成NALU单元
             // Move to the next NAL unit in the block buffer
             offset += AVCCHeaderLength + nalulen;
         }
     }
-    fflush(hfile);
-    //fclose(hfile);
 }
 
 @end
