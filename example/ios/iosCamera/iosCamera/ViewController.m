@@ -11,10 +11,61 @@
 //https://www.jianshu.com/p/a0e2d7b3b8a7
 //https://www.jianshu.com/p/f5f3f94f36c5
 //https://www.cnblogs.com/ziyi--caolu/p/8038968.html
+//https://www.jianshu.com/p/c2f8ef80e925
 
 #import "ViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <VideoToolbox/VideoToolbox.h>
+
+static double radians (double degrees) {return degrees * M_PI/180;}
+static double ScalingFactorForAngle(double angle, CGSize originalSize) {
+    double oriWidth = originalSize.height;
+    double oriHeight = originalSize.width;
+    double horizontalSpace = fabs( oriWidth*cos(angle) ) + fabs( oriHeight*sin(angle) );
+    double scalingFactor = oriWidth / horizontalSpace ;
+    return scalingFactor;
+}
+CGColorSpaceRef rgbColorSpace = NULL;
+CIContext *context = nil;
+CIImage *ci_originalImage = nil;
+CIImage *ci_transformedImage = nil;
+CIImage *ci_userTempImage = nil;
+//旋转
+static inline void RotatePixelBufferToAngle(CVPixelBufferRef thePixelBuffer, double theAngle) {
+    @autoreleasepool {
+        if (context==nil) {
+            rgbColorSpace = CGColorSpaceCreateDeviceRGB();
+            context = [CIContext contextWithOptions:@{kCIContextWorkingColorSpace: (__bridge id)rgbColorSpace,
+                                                      kCIContextOutputColorSpace : (__bridge id)rgbColorSpace}];
+        }
+        long int w = CVPixelBufferGetWidth(thePixelBuffer);
+        long int h = CVPixelBufferGetHeight(thePixelBuffer);
+        ci_originalImage = [CIImage imageWithCVPixelBuffer:thePixelBuffer];
+        ci_userTempImage = [ci_originalImage imageByApplyingTransform:CGAffineTransformMakeScale(0.6, 0.6)];
+        //CGImageRef UICG_image = [context createCGImage:ci_userTempImage fromRect:[ci_userTempImage extent]];
+        double angle = theAngle;
+        angle = angle+M_PI;
+        double scalingFact = ScalingFactorForAngle(angle, CGSizeMake(w, h));
+        CGAffineTransform transform =  CGAffineTransformMakeTranslation(w/2.0, h/2.0);
+        transform = CGAffineTransformRotate(transform, angle);
+        transform = CGAffineTransformTranslate(transform, -w/2.0, -h/2.0);
+        //rotate it by applying a transform
+        ci_transformedImage = [ci_originalImage imageByApplyingTransform:transform];
+        CVPixelBufferLockBaseAddress(thePixelBuffer, 0);
+        CGRect extentR = [ci_transformedImage extent];
+        CGPoint centerP = CGPointMake(extentR.size.width/2.0+extentR.origin.x,
+                                      extentR.size.height/2.0+extentR.origin.y);
+        CGSize scaledSize = CGSizeMake(w*scalingFact, h*scalingFact);
+        CGRect cropRect = CGRectMake(centerP.x-scaledSize.width/2.0, centerP.y-scaledSize.height/2.0,
+                                     scaledSize.width, scaledSize.height);
+        CGImageRef cg_img = [context createCGImage:ci_transformedImage fromRect:cropRect];
+        ci_transformedImage = [CIImage imageWithCGImage:cg_img];
+        ci_transformedImage = [ci_transformedImage imageByApplyingTransform:CGAffineTransformMakeScale(1.0/scalingFact, 1.0/scalingFact)];
+        [context render:ci_transformedImage toCVPixelBuffer:thePixelBuffer bounds:CGRectMake(0, 0, w, h) colorSpace:NULL];
+        CGImageRelease(cg_img);
+        CVPixelBufferUnlockBaseAddress(thePixelBuffer, 0);
+    }
+}
 
 //实现<AVCaptureVideoDataOutputSampleBufferDelegate>的接口以获取数据
 @interface ViewController () <AVCaptureVideoDataOutputSampleBufferDelegate>
@@ -34,7 +85,8 @@
 @property(nonatomic,strong)dispatch_queue_t dataCallbackQueue;
 // assign简单赋值，不更改引用计数，不考虑内存管理；常常用于基础数据类型
 @property(nonatomic,assign)VTCompressionSessionRef compressionSession;//编码会话
-@property(nonatomic)FILE* hfile;//保存文件
+@property(nonatomic)FILE* h264;//保存文件
+@property(nonatomic)FILE* hyuv;//保存文件
 @end
 
 //FOURCHARCODE to NSString
@@ -260,13 +312,21 @@
         {
             return;
         }
-        if(_hfile == NULL)
+        if(_h264 == NULL)
         {
             NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
             NSString *wdocpath = [docpath lastObject];
             NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.h264"];
             NSLog(@"finename:%@", filename);
-            _hfile = fopen([filename UTF8String], "wb");
+            _h264 = fopen([filename UTF8String], "wb");
+        }
+        if(_hyuv == NULL)
+        {
+            NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+            NSString *wdocpath = [docpath lastObject];
+            NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.yuv"];
+            NSLog(@"finename:%@", filename);
+            _hyuv = fopen([filename UTF8String], "wb");
         }
         [sender setTitle:@"stop" forState:UIControlStateNormal];
     }
@@ -278,10 +338,15 @@
         }
         _lastime = -1;
         _firstime = -1;
-        if(_hfile != NULL)
+        if(_h264 != NULL)
         {
-            fclose(_hfile);
-            _hfile = NULL;
+            fclose(_h264);
+            _h264 = NULL;
+        }
+        if(_hyuv != NULL)
+        {
+            fclose(_hyuv);
+            _hyuv = NULL;
         }
         [sender setTitle:@"start" forState:UIControlStateNormal];
     }
@@ -297,7 +362,8 @@
     _lastime = -1;
     _firstime = -1;
     _facing = true;
-    _hfile = NULL;
+    _h264 = NULL;
+    _hyuv = NULL;
 }
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
@@ -332,50 +398,45 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //NSString *scodectype = FOURCC2STR(codectype);
     //NSLog(@"codec type:%@", scodectype);
     
-    //    NSArray *docpath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    //    NSString *wdocpath = [docpath lastObject];
-    //    NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.yuv"];
-    //    NSLog(@"filename : %@", filename);
-    //    //使用C函数写文件
-    //    FILE* hfile = fopen([filename UTF8String], "ab+");
-    //    //lock
-    //    //CVPixelBufferRef是CVImageBufferRef的别名，两者操作几乎一致。
-    //    CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    //    //CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    //    //需先用CVPixelBufferLockBaseAddress()锁定地址才能从主存访问，否则调用CVPixelBufferGetBaseAddressOfPlane等函数则返回NULL或无效值。
-    //    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
-    //    //NSLog(@"imageBuffer:%@", imageBuffer);
-    //    if(CVPixelBufferIsPlanar(imageBuffer))
-    //    {
-    //        size_t planars = CVPixelBufferGetPlaneCount(imageBuffer);
-    //        if(planars == 2)
-    //        {
-    //            size_t stride = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
-    //            size_t width = CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
-    //            size_t height = CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
-    //            NSLog(@"buffer stride : %ld, w : %ld, h : %ld", stride, width, height);
-    //            void* Y = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
-    //            void* UV = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 1);
-    //            if(Y != nil && UV != nil)
-    //            {
-    //                NSLog(@"frame size %lu",stride * height*3/2);
-    //                fwrite(Y, 1, stride * height, hfile);
-    //                fwrite(UV, 1, stride * height / 2, hfile);
-    //            }
-    //        }
-    //    }else{
-    //        void* YUV = CVPixelBufferGetBaseAddress(imageBuffer);
-    //        size_t size = CVPixelBufferGetDataSize(imageBuffer);
-    //        NSLog(@"frame size %lu",size);
-    //        fwrite(YUV, 1, size, hfile);
-    //    }
-    //    fclose(hfile);
-    //    //unlock
-    //    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+    //lock
+    //CVPixelBufferRef是CVImageBufferRef的别名，两者操作几乎一致。
+    CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    //CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    //需先用CVPixelBufferLockBaseAddress()锁定地址才能从主存访问，否则调用CVPixelBufferGetBaseAddressOfPlane等函数则返回NULL或无效值。
+    CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+    //NSLog(@"imageBuffer:%@", imageBuffer);
+    if(CVPixelBufferIsPlanar(imageBuffer))
+    {
+        size_t planars = CVPixelBufferGetPlaneCount(imageBuffer);
+        if(planars == 2)
+        {
+            size_t stride = CVPixelBufferGetBytesPerRowOfPlane(imageBuffer, 0);
+            size_t width = CVPixelBufferGetWidthOfPlane(imageBuffer, 0);
+            size_t height = CVPixelBufferGetHeightOfPlane(imageBuffer, 0);
+            //NSLog(@"buffer stride : %ld, w : %ld, h : %ld", stride, width, height);
+            void* Y = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 0);
+            void* UV = CVPixelBufferGetBaseAddressOfPlane(imageBuffer, 1);
+            if(Y != nil && UV != nil && _hyuv != NULL)
+            {
+                //NSLog(@"frame size %lu",stride * height*3/2);
+                fwrite(Y, 1, stride * height, _hyuv);
+                fwrite(UV, 1, stride * height / 2, _hyuv);
+            }
+        }
+    }else{
+        void* YUV = CVPixelBufferGetBaseAddress(imageBuffer);
+        size_t size = CVPixelBufferGetDataSize(imageBuffer);
+        if(YUV != nil && _hyuv != NULL)
+        {
+            //NSLog(@"frame size %lu",size);
+            fwrite(YUV, 1, size, _hyuv);
+        }
+    }
+    fflush(_hyuv);
     
     //编码264
-    //将sampleBuffer转成imageBuffer
-    CVImageBufferRef imageBuffer = (CVImageBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
+    //RotatePixelBufferToAngle(imageBuffer, radians(90));
+    //RotatePixelBufferToAngle(imageBuffer, radians(90));
     if(_firstime == -1)
     {
         _firstime = cur;
@@ -399,6 +460,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         NSLog(@"VTCompressionSessionEncodeFrame failed %d", statusCode);
         [self doEncodeDestroy];
     }
+    
+    //unlock
+    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
 }
 
 void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,       //自定义回调参数
@@ -432,15 +496,15 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
         CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 1, &pparameterSet, &pparameterSetSize, &pparameterSetCount, 0);
         //NSLog(@"sps size : %d", sparameterSetSize);
         //NSLog(@"pps size : %d", pparameterSetSize);
-        if(_self.hfile != NULL)
+        if(_self.h264 != NULL)
         {
             //NSLog(@"write file");
             char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
-            fwrite(naluhead, 1, 4, _self.hfile);
-            fwrite(sparameterSet, 1, sparameterSetSize, _self.hfile);
-            fwrite(naluhead, 1, 4, _self.hfile);
-            fwrite(pparameterSet, 1, pparameterSetSize, _self.hfile);
-            fflush(_self.hfile);
+            fwrite(naluhead, 1, 4, _self.h264);
+            fwrite(sparameterSet, 1, sparameterSetSize, _self.h264);
+            fwrite(naluhead, 1, 4, _self.h264);
+            fwrite(pparameterSet, 1, pparameterSetSize, _self.h264);
+            fflush(_self.h264);
         }
     }
     //Float64 pts = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer));
@@ -461,12 +525,12 @@ void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,   
             // 从大端转系统端
             nalulen = CFSwapInt32BigToHost(nalulen);
             //NSLog(@"nalu size : %d", nalulen);
-            if(_self.hfile != NULL)
+            if(_self.h264 != NULL)
             {
                 char naluhead[4] = {0x00, 0x00, 0x00, 0x01};
-                fwrite(naluhead, 1, 4, _self.hfile);
-                fwrite(data + offset + AVCCHeaderLength, 1, nalulen, _self.hfile);
-                fflush(_self.hfile);
+                fwrite(naluhead, 1, 4, _self.h264);
+                fwrite(data + offset + AVCCHeaderLength, 1, nalulen, _self.h264);
+                fflush(_self.h264);
             }
             // 移动到写一个块，转成NALU单元
             // Move to the next NAL unit in the block buffer
