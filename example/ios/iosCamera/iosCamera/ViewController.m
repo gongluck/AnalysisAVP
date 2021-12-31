@@ -10,61 +10,45 @@
 //https://www.jianshu.com/p/e75d7b573ae5?utm_campaign=maleskine&utm_content=note&utm_medium=seo_notes&utm_source=recommendation
 //https://www.jianshu.com/p/a0e2d7b3b8a7
 //https://www.jianshu.com/p/f5f3f94f36c5
-//https://www.cnblogs.com/ziyi--caolu/p/8038968.html
-//https://www.jianshu.com/p/c2f8ef80e925
+//https://dikeyking.github.io/2020/01/02/CVPixelBuffer%E8%A3%81%E5%89%AA%E6%97%8B%E8%BD%AC%E7%BC%A9%E6%94%BE/
 
 #import "ViewController.h"
 #import <AVFoundation/AVFoundation.h>
 #import <VideoToolbox/VideoToolbox.h>
 
-static double radians (double degrees) {return degrees * M_PI/180;}
-static double ScalingFactorForAngle(double angle, CGSize originalSize) {
-    double oriWidth = originalSize.height;
-    double oriHeight = originalSize.width;
-    double horizontalSpace = fabs( oriWidth*cos(angle) ) + fabs( oriHeight*sin(angle) );
-    double scalingFactor = oriWidth / horizontalSpace ;
-    return scalingFactor;
-}
-CGColorSpaceRef rgbColorSpace = NULL;
-CIContext *context = nil;
-CIImage *ci_originalImage = nil;
-CIImage *ci_transformedImage = nil;
-CIImage *ci_userTempImage = nil;
-//旋转
-static inline void RotatePixelBufferToAngle(CVPixelBufferRef thePixelBuffer, double theAngle) {
-    @autoreleasepool {
-        if (context==nil) {
-            rgbColorSpace = CGColorSpaceCreateDeviceRGB();
-            context = [CIContext contextWithOptions:@{kCIContextWorkingColorSpace: (__bridge id)rgbColorSpace,
-                                                      kCIContextOutputColorSpace : (__bridge id)rgbColorSpace}];
-        }
-        long int w = CVPixelBufferGetWidth(thePixelBuffer);
-        long int h = CVPixelBufferGetHeight(thePixelBuffer);
-        ci_originalImage = [CIImage imageWithCVPixelBuffer:thePixelBuffer];
-        ci_userTempImage = [ci_originalImage imageByApplyingTransform:CGAffineTransformMakeScale(0.6, 0.6)];
-        //CGImageRef UICG_image = [context createCGImage:ci_userTempImage fromRect:[ci_userTempImage extent]];
-        double angle = theAngle;
-        angle = angle+M_PI;
-        double scalingFact = ScalingFactorForAngle(angle, CGSizeMake(w, h));
-        CGAffineTransform transform =  CGAffineTransformMakeTranslation(w/2.0, h/2.0);
-        transform = CGAffineTransformRotate(transform, angle);
-        transform = CGAffineTransformTranslate(transform, -w/2.0, -h/2.0);
-        //rotate it by applying a transform
-        ci_transformedImage = [ci_originalImage imageByApplyingTransform:transform];
-        CVPixelBufferLockBaseAddress(thePixelBuffer, 0);
-        CGRect extentR = [ci_transformedImage extent];
-        CGPoint centerP = CGPointMake(extentR.size.width/2.0+extentR.origin.x,
-                                      extentR.size.height/2.0+extentR.origin.y);
-        CGSize scaledSize = CGSizeMake(w*scalingFact, h*scalingFact);
-        CGRect cropRect = CGRectMake(centerP.x-scaledSize.width/2.0, centerP.y-scaledSize.height/2.0,
-                                     scaledSize.width, scaledSize.height);
-        CGImageRef cg_img = [context createCGImage:ci_transformedImage fromRect:cropRect];
-        ci_transformedImage = [CIImage imageWithCGImage:cg_img];
-        ci_transformedImage = [ci_transformedImage imageByApplyingTransform:CGAffineTransformMakeScale(1.0/scalingFact, 1.0/scalingFact)];
-        [context render:ci_transformedImage toCVPixelBuffer:thePixelBuffer bounds:CGRectMake(0, 0, w, h) colorSpace:NULL];
-        CGImageRelease(cg_img);
-        CVPixelBufferUnlockBaseAddress(thePixelBuffer, 0);
+#define SAVEYUVFILE 0
+
+//旋转和镜像操作
+static CVPixelBufferRef RotatePixelBuffer(CVPixelBufferRef pixelBuffer, CGImagePropertyOrientation orientation) {
+    CIImage *image = [CIImage imageWithCVImageBuffer:pixelBuffer];
+    image = [image imageByApplyingTransform : CGAffineTransformMakeTranslation(-image.extent.origin.x, -image.extent.origin.y)];
+    image = [image imageByApplyingOrientation : orientation];
+    CVPixelBufferRef output = NULL;
+    CVReturn ret = CVPixelBufferCreate(nil,
+                                       CGRectGetWidth(image.extent),
+                                       CGRectGetHeight(image.extent),
+                                       CVPixelBufferGetPixelFormatType(pixelBuffer),
+                                       nil,
+                                       &output);
+    if (ret != kCVReturnSuccess) {
+        NSLog(@"CVPixelBufferCreate failed : %d", ret);
     }
+    else{
+        // 复用 CIContext
+        static CIContext *context = nil;
+        if(context == nil)
+        {
+            //方式0
+            //context = [[CIContext alloc] init];
+            //方式1
+            context = [CIContext contextWithOptions: [NSDictionary dictionaryWithObject:[NSNumber numberWithBool:NO] forKey:kCIContextUseSoftwareRenderer]];
+            //方式2
+            //EAGLContext* eaglctx = [[EAGLContext alloc] initWithAPI : kEAGLRenderingAPIOpenGLES3];
+            //context = [CIContext contextWithEAGLContext : eaglctx];
+        }
+        [context render : image toCVPixelBuffer : output];//ios9.3
+    }
+    return output;
 }
 
 //实现<AVCaptureVideoDataOutputSampleBufferDelegate>的接口以获取数据
@@ -326,7 +310,9 @@ static inline void RotatePixelBufferToAngle(CVPixelBufferRef thePixelBuffer, dou
             NSString *wdocpath = [docpath lastObject];
             NSString *filename = [wdocpath stringByAppendingPathComponent:@"save.yuv"];
             NSLog(@"finename:%@", filename);
+#if SAVEYUVFILE
             _hyuv = fopen([filename UTF8String], "wb");
+#endif//SAVEYUVFILE
         }
         [sender setTitle:@"stop" forState:UIControlStateNormal];
     }
@@ -398,10 +384,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     //NSString *scodectype = FOURCC2STR(codectype);
     //NSLog(@"codec type:%@", scodectype);
     
-    //lock
     //CVPixelBufferRef是CVImageBufferRef的别名，两者操作几乎一致。
     CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
-    //CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+    imageBuffer = RotatePixelBuffer(imageBuffer, kCGImagePropertyOrientationRight);
     //需先用CVPixelBufferLockBaseAddress()锁定地址才能从主存访问，否则调用CVPixelBufferGetBaseAddressOfPlane等函数则返回NULL或无效值。
     CVPixelBufferLockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
     //NSLog(@"imageBuffer:%@", imageBuffer);
@@ -433,10 +418,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         }
     }
     fflush(_hyuv);
-    
+
     //编码264
-    //RotatePixelBufferToAngle(imageBuffer, radians(90));
-    //RotatePixelBufferToAngle(imageBuffer, radians(90));
     if(_firstime == -1)
     {
         _firstime = cur;
@@ -460,9 +443,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         NSLog(@"VTCompressionSessionEncodeFrame failed %d", statusCode);
         [self doEncodeDestroy];
     }
-    
+
     //unlock
     CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+    CVPixelBufferRelease(imageBuffer);
 }
 
 void VTCompressionOutputCallbackH264(void * CM_NULLABLE outputCallbackRefCon,       //自定义回调参数
