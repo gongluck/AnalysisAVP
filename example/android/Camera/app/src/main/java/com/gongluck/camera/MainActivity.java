@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private Camera mCamera = null;
     private SurfaceTexture mSurfaceTexture = new SurfaceTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
     private byte[] mPreviewData = new byte[mWidth * mHeight * 3 / 2];
-    private boolean mUseSurfacePreview = true;
+    private boolean mUseSurfacePreview = true;//使用SurfaceView预览
 
     //MediaCodec
     private MediaCodec mMediaCodec = null;
@@ -66,21 +66,20 @@ public class MainActivity extends AppCompatActivity {
     private int mSleepTime = 12000;
     private Thread mWork = null;
 
-    //帧回调
+    //采集帧回调
     Camera.PreviewCallback mPrewviewCallback = new Camera.PreviewCallback() {
         @Override
         public void onPreviewFrame(byte[] data, Camera camera) {
             //设置下一帧回调，调试一天，原来是逻辑错误没有调用addCallbackBuffer导致编码出的264数据不能正常播放，只有一帧有效数据
             //放在最前面，以防忘记！
             mCamera.addCallbackBuffer(mPreviewData);
-
+            //获取相机分辨率
             Camera.Parameters parameters = mCamera.getParameters();
             //Log.i(TAG, "parameters : " + parameters.flatten());
             int imageFormat = parameters.getPreviewFormat();
             int w = parameters.getPreviewSize().width;
             int h = parameters.getPreviewSize().height;
-            Log.i(TAG, "data info:\nformat = " + imageFormat + "\nwidth = " + w + "\nheight = " + h);
-
+            //Log.i(TAG, "data info:\nformat = " + imageFormat + "\nwidth = " + w + "\nheight = " + h);
             try {
                 //保存yuv
                 File file = new File(Environment.getExternalStorageDirectory().getPath() + "/save.yuv");
@@ -91,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file));
                 outputStream.write(data, 0, data.length);
-
                 //保存jpeg
                 String path = Environment.getExternalStorageDirectory().getPath() + "/save.jpg";
                 Rect rect = new Rect(0, 0, w, h);
@@ -100,10 +98,8 @@ public class MainActivity extends AppCompatActivity {
                 yuvImg.compressToJpeg(rect, 100, bos);
                 bos.flush();
                 bos.close();
-
                 if (!mUseSurfacePreview) {
                     mSurfaceView.setVisibility(View.INVISIBLE);
-
                     //显示到imageview
                     ByteArrayOutputStream stream = new ByteArrayOutputStream();
                     yuvImg.compressToJpeg(new Rect(0, 0, w, h), 100, stream);
@@ -112,7 +108,6 @@ public class MainActivity extends AppCompatActivity {
                     mImageView.setImageBitmap(bm);
                     mImageView.setRotation(0);
                 }
-
                 //推送待编码数据
                 if (mYUVQueue.size() >= mQueueSize) {
                     Log.e(TAG, "YUVQueue full");
@@ -156,22 +151,23 @@ public class MainActivity extends AppCompatActivity {
     void onCameraOpen(View v) {
         onCameraStop(v);
         Log.i(TAG, "Start...");
+        int facing = usefacing ? Camera.CameraInfo.CAMERA_FACING_FRONT : Camera.CameraInfo.CAMERA_FACING_BACK;
+        //遍历相机设备
         int nums = Camera.getNumberOfCameras();
         Log.i(TAG, "There has " + nums + " camera devices.");
-
         Camera.CameraInfo camerainfo = new Camera.CameraInfo();
         int device = -1;
         for (int i = 0; i < nums; ++i) {
             Camera.getCameraInfo(i, camerainfo);
             Log.i(TAG, "The " + i + " camera device info:\nfacing=" + camerainfo.facing);
-            if (usefacing && camerainfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                device = i;
-            } else if (!usefacing && camerainfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+            if (camerainfo.facing == facing) {
                 device = i;
             }
         }
 
+        //打开相机
         mCamera = Camera.open(device);
+        //获取相机支持的参数
         Camera.Parameters cameraParams = mCamera.getParameters();
         List<Integer> formats = cameraParams.getSupportedPictureFormats();
         for (int i : formats) {
@@ -181,7 +177,6 @@ public class MainActivity extends AppCompatActivity {
         for (Camera.Size s : sizes) {
             Log.i(TAG, "Support picture size : " + s.width + " x " + s.height);
         }
-
         formats = cameraParams.getSupportedPreviewFormats();
         for (int i : formats) {
             Log.i(TAG, "Support preview format : " + i);
@@ -191,27 +186,28 @@ public class MainActivity extends AppCompatActivity {
             Log.i(TAG, "Support preview size : " + s.width + " x " + s.height);
         }
 
-        cameraParams.setPreviewFormat(ImageFormat.NV21);
+        //设置相机采集参数
+        cameraParams.setPreviewFormat(ImageFormat.NV21);//基本都支持NV21
         cameraParams.setPreviewSize(mWidth, mHeight);
         cameraParams.setPictureFormat(ImageFormat.NV21);
-        cameraParams.setPictureSize(mWidth, mHeight);
-        cameraParams.setZoom(0);
-        cameraParams.setRotation(0);
-
+        cameraParams.setPictureSize(mWidth, mHeight);//采集回调数据的宽高
+        cameraParams.setZoom(0);//焦距
+        cameraParams.setRotation(0);//旋转?
+        //自动对焦
         List<String> focusModes = cameraParams.getSupportedFocusModes();
         String supportedMode = focusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) ? Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO : "";
         if (!supportedMode.equals("")) {
             cameraParams.setFocusMode(supportedMode);
         }
-
         mCamera.setParameters(cameraParams);
 
+        //根据手机的旋转角度设置显示旋转
         mRotation = this.getWindowManager().getDefaultDisplay().getRotation();
         Log.i(TAG, "rotation : " + mRotation);
         mCamera.setDisplayOrientation(90 * ((5 - mRotation) % 4));//mUseSurfacePreview==true
         mCamera.startPreview();
-        mCamera.setPreviewCallbackWithBuffer(mPrewviewCallback);
-        mCamera.addCallbackBuffer(mPreviewData);
+        mCamera.setPreviewCallbackWithBuffer(mPrewviewCallback);//从回调中接收采集数据
+        mCamera.addCallbackBuffer(mPreviewData);//设置回调数据缓冲区
         try {
             if (mUseSurfacePreview) {
                 mCamera.setPreviewDisplay(mSurfaceView.getHolder());
@@ -219,7 +215,9 @@ public class MainActivity extends AppCompatActivity {
                 mCamera.setPreviewTexture(mSurfaceTexture);
             }
 
+            //编码视频
             String codecname = null;
+            //遍历所有编码器信息
             int counts = MediaCodecList.getCodecCount();
             Log.i(TAG, "Support codec counts : " + counts);
             for (int i = 0; i < counts; ++i) {
@@ -236,7 +234,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             }
-            Log.i(TAG, "++++ use : " + codecname);
+            Log.i(TAG, "use : " + codecname);
 
             //编码h264，下面参数都是限制输出的，所以下面dequeueInputBuffer和dequeueOutputBuffer的成功频率可以大于帧率参数
             MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mHeight, mWidth);
@@ -245,10 +243,9 @@ public class MainActivity extends AppCompatActivity {
             mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
             mediaFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, mWidth * mHeight / 10);
-            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mFramerate);//GOP
-            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);//framerate为单位
-
-            //mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
+            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mFramerate);//帧率
+            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);//framerate为单位的I帧间隔(GOP)
+            //mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);//默认编码器
             mMediaCodec = MediaCodec.createByCodecName(codecname);
             mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             mMediaCodec.start();
@@ -284,7 +281,8 @@ public class MainActivity extends AppCompatActivity {
                                 //输入待编码数据
                                 int inputBufferIndex = mMediaCodec.dequeueInputBuffer(0);
                                 //Log.i(TAG, "inputBufferIndex : " + inputBufferIndex);
-                                if (inputBufferIndex >= 0) {
+                                if (inputBufferIndex >= 0) {//输入队列有可用缓冲区
+                                    //插入数据到输入队列
                                     ByteBuffer inputBuffer = mMediaCodec.getInputBuffers()[inputBufferIndex];
                                     inputBuffer.clear();
                                     inputBuffer.put(input);
@@ -294,17 +292,17 @@ public class MainActivity extends AppCompatActivity {
                                 MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
                                 int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, mSleepTime);
                                 //Log.i(TAG, "outputBufferIndex : " + outputBufferIndex);
-                                while (outputBufferIndex >= 0) {
+                                while (outputBufferIndex >= 0) {//输出队列有可用缓冲区
                                     //Log.i(TAG, "outputBufferIndex : " + outputBufferIndex);
                                     ByteBuffer outputBuffer = mMediaCodec.getOutputBuffers()[outputBufferIndex];
                                     byte[] outData = new byte[bufferInfo.size];
                                     outputBuffer.get(outData);
                                     switch (bufferInfo.flags) {
-                                        case MediaCodec.BUFFER_FLAG_CODEC_CONFIG:
+                                        case MediaCodec.BUFFER_FLAG_CODEC_CONFIG://sps pps
                                             mSpsPps = new byte[bufferInfo.size];
                                             mSpsPps = outData;
                                             break;
-                                        case MediaCodec.BUFFER_FLAG_KEY_FRAME:
+                                        case MediaCodec.BUFFER_FLAG_KEY_FRAME://I
                                             byte[] keyframe = new byte[bufferInfo.size + mSpsPps.length];
                                             System.arraycopy(mSpsPps, 0, keyframe, 0, mSpsPps.length);
                                             System.arraycopy(outData, 0, keyframe, mSpsPps.length, outData.length);
