@@ -2,8 +2,11 @@
 //https://www.jianshu.com/p/9a51270b69ea
 //https://blog.csdn.net/import_sadaharu/article/details/52744899?utm_medium=distribute.pc_relevant.none-task-blog-2~default~baidujs_title~default-0.no_search_link&spm=1001.2101.3001.4242
 //https://blog.csdn.net/ss182172633/article/details/50256733
+//https://blog.csdn.net/u013394527/article/details/109131769
+//https://blog.csdn.net/qq_18757521/article/details/99711438
 package com.gongluck.camera;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Bitmap;
@@ -18,6 +21,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.opengl.GLES11Ext;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -26,6 +30,8 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+
+import com.gongluck.camera.R;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,12 +54,13 @@ public class MainActivity extends AppCompatActivity {
     //rotation
     int mRotation = 0;
     boolean usefacing = true;//是否使用前置摄像头
+    Camera.CameraInfo camerainfo = null;
 
     //Camera
     private Camera mCamera = null;
     private SurfaceTexture mSurfaceTexture = new SurfaceTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
     private byte[] mPreviewData = new byte[mWidth * mHeight * 3 / 2];
-    private boolean mUseSurfacePreview = true;//使用SurfaceView预览
+    private boolean mUseSurfacePreview = false;//使用SurfaceView预览
 
     //MediaCodec
     private MediaCodec mMediaCodec = null;
@@ -106,7 +113,13 @@ public class MainActivity extends AppCompatActivity {
                     Bitmap bm = BitmapFactory.decodeByteArray(stream.toByteArray(), 0, stream.size());
                     stream.close();
                     mImageView.setImageBitmap(bm);
-                    mImageView.setRotation(0);
+                    //根据手机的旋转角度设置显示旋转
+                    if (usefacing) {
+                        mImageView.setScaleX(-1);//水平翻转
+                        mImageView.setRotation((720 - (camerainfo.orientation + 90 * mRotation)) % 360);
+                    } else {
+                        mImageView.setRotation((camerainfo.orientation - 90 * mRotation + 360) % 360);
+                    }
                 }
                 //推送待编码数据
                 if (mYUVQueue.size() >= mQueueSize) {
@@ -155,13 +168,14 @@ public class MainActivity extends AppCompatActivity {
         //遍历相机设备
         int nums = Camera.getNumberOfCameras();
         Log.i(TAG, "There has " + nums + " camera devices.");
-        Camera.CameraInfo camerainfo = new Camera.CameraInfo();
+        camerainfo = new Camera.CameraInfo();
         int device = -1;
         for (int i = 0; i < nums; ++i) {
             Camera.getCameraInfo(i, camerainfo);
             Log.i(TAG, "The " + i + " camera device info:\nfacing=" + camerainfo.facing);
             if (camerainfo.facing == facing) {
                 device = i;
+                break;
             }
         }
 
@@ -188,9 +202,10 @@ public class MainActivity extends AppCompatActivity {
 
         //设置相机采集参数
         cameraParams.setPreviewFormat(ImageFormat.NV21);//基本都支持NV21
-        cameraParams.setPreviewSize(mWidth, mHeight);
-        cameraParams.setPictureFormat(ImageFormat.NV21);
-        cameraParams.setPictureSize(mWidth, mHeight);//采集回调数据的宽高
+        cameraParams.setPreviewSize(mWidth, mHeight);//预览回调数据宽高
+        //拍照相关
+        //cameraParams.setPictureFormat(ImageFormat.NV21);//有些设备不支持照片格式NV12
+        cameraParams.setPictureSize(mWidth, mHeight);//拍照回调数据的宽高
         cameraParams.setZoom(0);//焦距
         cameraParams.setRotation(0);//旋转?
         //自动对焦
@@ -201,12 +216,17 @@ public class MainActivity extends AppCompatActivity {
         }
         mCamera.setParameters(cameraParams);
 
-        //根据手机的旋转角度设置显示旋转
         mRotation = this.getWindowManager().getDefaultDisplay().getRotation();
         Log.i(TAG, "rotation : " + mRotation);
-        mCamera.setDisplayOrientation(90 * ((5 - mRotation) % 4));//mUseSurfacePreview==true
-        mCamera.startPreview();
-        mCamera.setPreviewCallbackWithBuffer(mPrewviewCallback);//从回调中接收采集数据
+        if (mUseSurfacePreview) {
+            //根据手机的旋转角度设置显示旋转
+            if (usefacing) {
+                mCamera.setDisplayOrientation((720 - (camerainfo.orientation + 90 * mRotation)) % 360);
+            } else {
+                mCamera.setDisplayOrientation((camerainfo.orientation - 90 * mRotation + 360) % 360);
+            }
+        }
+        mCamera.setPreviewCallbackWithBuffer(mPrewviewCallback);//从预览回调中接收采集数据
         mCamera.addCallbackBuffer(mPreviewData);//设置回调数据缓冲区
         try {
             if (mUseSurfacePreview) {
@@ -214,27 +234,28 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 mCamera.setPreviewTexture(mSurfaceTexture);
             }
+            mCamera.startPreview();//开始预览
 
-            //编码视频
+            //编码h264
             String codecname = null;
-            //遍历所有编码器信息
             int counts = MediaCodecList.getCodecCount();
             Log.i(TAG, "Support codec counts : " + counts);
             for (int i = 0; i < counts; ++i) {
                 MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
-                Log.i(TAG, "Support codec : " + info.getName() +
-                        ", isencoder : " + info.isEncoder() +
-                        ", ishwaccel : " + info.isHardwareAccelerated() +
-                        ", issoftware : " + info.isSoftwareOnly());
                 for (String type : info.getSupportedTypes()) {
                     Log.i(TAG, "\tsupport type : " + type);
-                    if (type.equals(MediaFormat.MIMETYPE_VIDEO_AVC) && info.isEncoder() && info.isHardwareAccelerated()) {
+                    if (type.equals(MediaFormat.MIMETYPE_VIDEO_AVC) && info.isEncoder()) {
+                        if (Build.VERSION.SDK_INT >= 29) {
+                            if (!info.isHardwareAccelerated()) {
+                                continue;
+                            }
+                        }
                         codecname = info.getName();
                         Log.i(TAG, "\tmaybe use : " + codecname);
                     }
                 }
             }
-            Log.i(TAG, "use : " + codecname);
+            Log.i(TAG, "++++ use : " + codecname);
 
             //编码h264，下面参数都是限制输出的，所以下面dequeueInputBuffer和dequeueOutputBuffer的成功频率可以大于帧率参数
             MediaFormat mediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mHeight, mWidth);
@@ -245,8 +266,11 @@ public class MainActivity extends AppCompatActivity {
             mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, mWidth * mHeight / 10);
             mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, mFramerate);//帧率
             mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);//framerate为单位的I帧间隔(GOP)
-            //mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);//默认编码器
-            mMediaCodec = MediaCodec.createByCodecName(codecname);
+            if (codecname == null) {
+                mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);//默认编码器
+            } else {
+                mMediaCodec = MediaCodec.createByCodecName(codecname);
+            }
             mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             mMediaCodec.start();
 
