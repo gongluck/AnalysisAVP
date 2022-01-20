@@ -1,6 +1,6 @@
 ﻿/*
- * @Author: gongluck 
- * @Date: 2020-11-02 17:08:06 
+ * @Author: gongluck
+ * @Date: 2020-11-02 17:08:06
  * @Last Modified by: gongluck
  * @Last Modified time: 2021-05-09 19:44:06
  */
@@ -66,10 +66,11 @@ const char *nal_parse_type(uint8_t type)
 std::ostream &operator<<(std::ostream &os, const NALHEADER &nalheader)
 {
 	os << "nal_ref_idc : " << nal_parse_idc(nalheader.nal_ref_idc)
-	   << "\nnal_unit_type : " << nal_parse_type(nalheader.nal_unit_type);
+		 << "\nnal_unit_type : " << nal_parse_type(nalheader.nal_unit_type);
 	return os;
 }
 
+//[start, end)
 int32_t findnalu(uint8_t *data, uint32_t start, uint32_t end, int8_t *nalstep)
 {
 	if (start >= end)
@@ -78,25 +79,24 @@ int32_t findnalu(uint8_t *data, uint32_t start, uint32_t end, int8_t *nalstep)
 	}
 
 	uint32_t i = start;
-	int step = 0; //记录0x00的个数
-	*nalstep = 0;
-
-	while (i++ < end)
+	//*nalstep = 0;//记录0x00的个数
+	for (; i < end; ++i)
 	{
-		if (data[i - 1] == 0)
+		if (data[i] == 0)
 		{
-			++step;
+			++*nalstep;
 		}
-		else if (data[i - 1] == 1 && step >= 2)
+		else if (data[i] == 1 && *nalstep >= 2)
 		{
-			*nalstep = step > 2 ? 4 : 3;
+			*nalstep = *nalstep > 2 ? 4 : 3;
 			break;
 		}
 		else
 		{
-			step = 0;
+			*nalstep = 0;
 		}
 	}
 
-	return i >= end ? end : i;
+	// i有效时返回0x01的索引
+	return i >= end ? -1 : i;
 }
