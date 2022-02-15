@@ -2,7 +2,7 @@
  * @Author: gongluck 
  * @Date: 2021-11-24 16:52:12 
  * @Last Modified by: gongluck
- * @Last Modified time: 2022-02-14 18:44:36
+ * @Last Modified time: 2022-02-15 16:38:26
  */
 
 // 自定义信令
@@ -29,10 +29,10 @@ var localVideo = document.querySelector("#localVideo");
 var remoteVideo = document.querySelector("#remoteVideo");
 
 //新建一个websocket连接
-var websocket = new WebSocket("ws://127.0.0.1:8001");
+var websocket = new WebSocket("wss://127.0.0.1:55555");
 
 //ice配置
-var iceip = "116.63.205.180";//coturn地址
+var iceip = "127.0.0.1";//coturn地址
 var config = {
     //收集ICE候选时要使用的媒体捆绑策略
     bundlePolicy: "max-bundle",
@@ -275,7 +275,8 @@ document.getElementById("joinBtn")
             .then(function (stream) {
                 //设置本地窗口视频
                 localVideo.srcObject = stream;
-                console.info("set stream : " + stream);
+                console.info("set stream : " + stream)
+                console.info(stream);
                 //构造SIGNAL_TYPE_JOIN消息
                 var jsonMsg = {
                     cmd: SIGNAL_TYPE_JOIN,

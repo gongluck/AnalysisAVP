@@ -37,3 +37,6 @@ Samples
 #apple
 *.xcuserstate
 xcuserdata
+*.pem
+*.key
+*.csr
