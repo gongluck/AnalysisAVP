@@ -2,7 +2,7 @@
  * @Author: gongluck 
  * @Date: 2021-11-26 16:50:37 
  * @Last Modified by: gongluck
- * @Last Modified time: 2022-02-15 16:33:06
+ * @Last Modified time: 2022-02-21 11:42:45
  */
 
 // 自定义信令
@@ -61,6 +61,9 @@ wss.on("connection", function (conn) {
             connections = new Map();
         }
         console.info("connections size : " + connections.size);
+        connections.forEach(function (value, key) {
+            console.info("id : " + key);
+        });
         var jsonResMsg = {};
         //处理命令
         switch (jsonMsg.cmd) {
@@ -139,6 +142,7 @@ wss.on("connection", function (conn) {
                 {
                     if (connections.get(uid) != null) {
                         connections.forEach(function (connection, id) {
+                            console.info("dueling with id : " + id);
                             if (id != uid) {
                                 jsonResMsg.cmd = jsonMsg.cmd;
                                 jsonResMsg.roomid = roomid;

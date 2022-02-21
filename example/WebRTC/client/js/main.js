@@ -2,7 +2,7 @@
  * @Author: gongluck 
  * @Date: 2021-11-24 16:52:12 
  * @Last Modified by: gongluck
- * @Last Modified time: 2022-02-15 16:38:26
+ * @Last Modified time: 2022-02-21 18:01:39
  */
 
 // 自定义信令
@@ -39,7 +39,7 @@ var config = {
     //仅为RTP收集ICE候选，并在RTP候选上复用RTCP。如果远程端点不支持rtcp-mux，会话协商将失败。
     rtcpMuxPolicy: "require",
     //收集ICE候选的类型
-    iceTransportPolicy: "relay", //relay all
+    iceTransportPolicy: "all", //relay all
     //ICE服务地址
     iceServers: [{
         "urls": ["turn:" + iceip + ":3478"],

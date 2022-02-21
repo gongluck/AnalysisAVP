@@ -10,7 +10,7 @@
         android:id="@+id/addr_edit"
         android:layout_width="200dp"
         android:layout_height="50dp"
-        android:text="ws://192.168.0.142:8001"
+        android:text="wss://192.168.0.142:55555"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintLeft_toLeftOf="parent" />
 
