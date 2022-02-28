@@ -1,8 +1,9 @@
 package com.gongluck.webrtc_android;
 
+import static android.media.MediaRecorder.AudioSource.*;
+
 import android.content.Intent;
 import android.graphics.Point;
-import android.media.MediaRecorder;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
@@ -33,8 +34,8 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.webrtc.AudioSource;
 //webrtc
+import org.webrtc.AudioSource;
 import org.webrtc.AudioTrack;
 import org.webrtc.DataChannel;
 import org.webrtc.DefaultVideoDecoderFactory;
@@ -58,6 +59,7 @@ import org.webrtc.VideoDecoderFactory;
 import org.webrtc.VideoEncoderFactory;
 import org.webrtc.VideoSource;
 import org.webrtc.VideoTrack;
+import org.webrtc.audio.JavaAudioDeviceModule;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -166,6 +168,12 @@ public class MainActivity extends AppCompatActivity {
       .builder()
       .setVideoEncoderFactory(encoderFactory)
       .setVideoDecoderFactory(decoderFactory);
+    builder.setAudioDeviceModule(
+      JavaAudioDeviceModule
+        .builder(getApplicationContext())
+        .setAudioSource(VOICE_COMMUNICATION)
+        .createAudioDeviceModule()
+    );
     mPeerConnFactory = builder.createPeerConnectionFactory();
   }
 
@@ -249,10 +257,18 @@ public class MainActivity extends AppCompatActivity {
     config.iceTransportsType = PeerConnection.IceTransportsType.ALL;
 
     doDestroyPeerconnection();
+    MediaConstraints constraints = new MediaConstraints();
+    //添加端口约束
+    constraints.mandatory.add(
+      new MediaConstraints.KeyValuePair("gMinPort", "20202")
+    );
+    constraints.mandatory.add(
+      new MediaConstraints.KeyValuePair("gMaxPort", "20202")
+    );
     mPeerConn =
       mPeerConnFactory.createPeerConnection(
         config,
-        null,
+        constraints,
         new PeerConnection.Observer() {
           @Override
           public void onSignalingChange(
@@ -309,8 +325,10 @@ public class MainActivity extends AppCompatActivity {
               json.put("remotid", mRemoteid);
               jsonSdp.put("sdpMid", iceCandidate.sdpMid);
               jsonSdp.put("sdpMLineIndex", iceCandidate.sdpMLineIndex);
-              Log.i(TAG, "use candidate : " + iceCandidate.sdp);
-              jsonSdp.put("candidate", iceCandidate.sdp);
+              String sdp = iceCandidate.sdp;
+              //can modify the sdp here
+              Log.i(TAG, "use candidate : " + sdp);
+              jsonSdp.put("candidate", sdp);
               json.put("sdp", jsonSdp.toString());
               mWs.send(json.toString());
               Log.i(TAG, "send candidate msg : " + json.toString());

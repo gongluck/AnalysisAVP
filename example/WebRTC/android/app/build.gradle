@@ -24,6 +24,12 @@ android {
     }
 }
 
+repositories {
+    flatDir {
+        dirs '../../../../3rdparty/webrtc/aar'   // aar目录
+    }
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'androidx.appcompat:appcompat:1.0.2'
@@ -34,7 +40,8 @@ dependencies {
     //注释下面这个，否则webrtc引入失败
     //androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.1'
     //webrtc
-    implementation 'org.webrtc:google-webrtc:latest.release'
+    //implementation 'org.webrtc:google-webrtc:latest.release'
+    compile(name: 'libwebrtc', ext: 'aar') //add port constraints
     //websocket
     implementation 'org.java-websocket:Java-WebSocket:latest.release'
     implementation 'org.slf4j:slf4j-simple:latest.release'
