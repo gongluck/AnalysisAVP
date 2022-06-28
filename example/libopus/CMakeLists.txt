@@ -9,24 +9,20 @@ project(${CURRENT_FOLDER}_example)
 include_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/include)
 
 if(WIN32)
-# 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/windows/debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/windows/release)
-if(CMAKE_CL_64)
-#win64
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/windows/x64)
-else()
-#win32
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/windows/win32)
-endif(CMAKE_CL_64)
-endif(WIN32)
-
-if(ANDROID)
-# 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
-link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/android/${ANDROID_ABI})
-endif(ANDROID)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/windows/debug)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/windows/release)
+  if(CMAKE_CL_64)
+    #win64
+    link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/windows/x64)
+  else()
+    #win32
+    link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/windows/win32)
+  endif()
+elseif(ANDROID)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
+  link_directories(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/android/${ANDROID_ABI})
+endif()
 
 # 添加源码文件到项目
 FILE(GLOB header ./*.h)
@@ -36,26 +32,22 @@ add_executable(${PROJECT_NAME} ${header} ${SRCS})
 #windows
 if(WIN32)
 target_link_libraries(${PROJECT_NAME} opus)
-endif(WIN32)
-
 #android
-if(ANDROID)
+elseif(ANDROID)
 target_link_libraries(${PROJECT_NAME} opus)
-endif(ANDORID)
+endif()
 
 #windows
 if(WIN32)
-if(CMAKE_CL_64)
-set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _x64_d)
-set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _x64_r)
-else(WIN32)
-set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _win32_d)
-set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _win32_r)
-endif(CMAKE_CL_64)
-endif(WIN32)
-
+  if(CMAKE_CL_64)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _x64_d)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _x64_r)
+  else()
+    set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _win32_d)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _win32_r)
+  endif()
 #android
-if(ANDROID)
-set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _${ANDROID_ABI}_d)
-set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _${ANDROID_ABI}_r)
-endif(ANDORID)
+elseif(ANDROID)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _${ANDROID_ABI}_d)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _${ANDROID_ABI}_r)
+endif()
