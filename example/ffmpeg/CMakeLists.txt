@@ -25,6 +25,12 @@ elseif(ANDROID)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
   link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/android/${ANDROID_ABI})
+elseif(UNIX)
+  #set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -g2 -ggdb")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g2 -ggdb")
+  set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../bin/linux)
+  link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/linux)
 endif()
 
 # 添加源码文件到项目
@@ -39,6 +45,9 @@ if(WIN32)
 elseif(ANDROID)
   #android静态库补充依赖
   target_link_libraries(${subject} z)
+elseif(UNIX)
+  #linux静态库补充依赖
+  target_link_libraries(${subject} z pthread lzma va va-drm bz2)
 endif()
 
 #windows
@@ -54,6 +63,7 @@ if(WIN32)
 elseif(ANDROID)
   set_property(TARGET ${subject} PROPERTY DEBUG_POSTFIX _${ANDROID_ABI}_d)
   set_property(TARGET ${subject} PROPERTY RELEASE_POSTFIX _${ANDROID_ABI}_r)
+elseif(UNIX)
 endif()
 
 ################################################################################
@@ -75,6 +85,12 @@ elseif(ANDROID)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
   link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/android/${ANDROID_ABI})
+elseif(UNIX)
+  #set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -g2 -ggdb")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -g2 -ggdb")
+  set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../bin/linux)
+  link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ffmpeg/lib/linux)
 endif()
 
 # 添加源码文件到项目
@@ -89,6 +105,9 @@ if(WIN32)
 elseif(ANDROID)
   #android静态库补充依赖
   target_link_libraries(${subject} z)
+elseif(UNIX)
+  #linux静态库补充依赖
+  target_link_libraries(${subject} z pthread lzma va va-drm bz2)
 endif()
 
 #windows
@@ -104,4 +123,5 @@ if(WIN32)
 elseif(ANDROID)
   set_property(TARGET ${subject} PROPERTY DEBUG_POSTFIX _${ANDROID_ABI}_d)
   set_property(TARGET ${subject} PROPERTY RELEASE_POSTFIX _${ANDROID_ABI}_r)
+elseif(UNIX)
 endif()

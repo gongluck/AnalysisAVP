@@ -1,3 +1,3 @@
-git submodule update --progress --init --recursive
-
+git submodule update --init
+git submodule update --remote
 pause
