@@ -1,6 +1,6 @@
 /*
- * @Author: gongluck 
- * @Date: 2021-05-18 10:26:54 
+ * @Author: gongluck
+ * @Date: 2021-05-18 10:26:54
  * @Last Modified by: gongluck
  * @Last Modified time: 2021-05-18 18:54:03
  */
@@ -14,32 +14,32 @@
 typedef uint8_t GINT8;
 typedef struct __GINT16
 {
-	uint8_t data1;
-	uint8_t data2;
+  uint8_t data1;
+  uint8_t data2;
 } GINT16;
 typedef struct __GINT24
 {
-	uint8_t data1;
-	uint8_t data2;
-	uint8_t data3;
+  uint8_t data1;
+  uint8_t data2;
+  uint8_t data3;
 } GINT24;
 typedef struct __GINT32
 {
-	uint8_t data1;
-	uint8_t data2;
-	uint8_t data3;
-	uint8_t data4;
+  uint8_t data1;
+  uint8_t data2;
+  uint8_t data3;
+  uint8_t data4;
 } GINT32;
 typedef struct __GINT64
 {
-	uint8_t data1;
-	uint8_t data2;
-	uint8_t data3;
-	uint8_t data4;
-	uint8_t data5;
-	uint8_t data6;
-	uint8_t data7;
-	uint8_t data8;
+  uint8_t data1;
+  uint8_t data2;
+  uint8_t data3;
+  uint8_t data4;
+  uint8_t data5;
+  uint8_t data6;
+  uint8_t data7;
+  uint8_t data8;
 } GINT64;
 
 #define GINT16TOINT(x) (x.data1 << 8 | x.data2)
