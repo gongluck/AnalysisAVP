@@ -1,8 +1,16 @@
 #!/bin/sh
 
-rm -r ./build/linux/*.*
+rm -r ./build/linux
 mkdir ./build/linux
 
-cmake -S . -B ./build/linux
-#cmake --build ./build/linux --clean-first --config debug --target all
-cmake --build ./build/linux --clean-first --config release --target all
+buildprefix=./build/linux
+
+type=debug
+buildpath=$buildprefix/$type
+cmake -S . -B $buildpath -DCMAKE_BUILD_TYPE=$type
+cmake --build $buildpath --clean-first --config $type --target all -- -j8
+
+type=release
+buildpath=$buildprefix/$type
+cmake -S . -B $buildpath -DCMAKE_BUILD_TYPE=$type
+cmake --build $buildpath --clean-first --config $type --target all -- -j8
