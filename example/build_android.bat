@@ -11,6 +11,7 @@ set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 set type=release
+set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 
@@ -21,6 +22,7 @@ set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 set type=release
+set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 
@@ -31,6 +33,7 @@ set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 set type=release
+set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 
@@ -41,6 +44,7 @@ set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 set type=release
+set buildpath=%buildprefix%/%abi%_%type%
 cmake -G "Unix Makefiles" -S . -B %buildpath% %buildparams% -DANDROID_ABI=%abi% -DCMAKE_BUILD_TYPE=%type%
 cmake --build %buildpath% --clean-first --config %type% --target all -- -j8
 

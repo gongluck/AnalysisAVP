@@ -2,7 +2,7 @@
  * @Author: gongluck
  * @Date: 2022-08-11 14:57:52
  * @Last Modified by: gongluck
- * @Last Modified time: 2022-08-11 15:10:58
+ * @Last Modified time: 2022-10-14 16:02:21
  */
 
 #include <iostream>
@@ -11,7 +11,7 @@
 
 #include "mk_mediakit.h"
 
-const char *publicip = "192.168.0.145";
+// const char *publicip = "0.0.0.0";
 unsigned short httport = 80;
 unsigned short rtsport = 554;
 unsigned short rtmport = 1935;
@@ -34,6 +34,87 @@ static void on_h264_frame(void *user_data, mk_h264_splitter splitter, const char
   int ret = mk_media_input_frame((mk_media)user_data, frame);
   CHECKERR(ret, 1);
   mk_frame_unref(frame);
+}
+
+//按照json转义规则转义webrtc answer sdp
+static char *escape_string(const char *ptr)
+{
+  char *escaped = (char *)malloc(2 * strlen(ptr));
+  char *ptr_escaped = escaped;
+  while (1)
+  {
+    switch (*ptr)
+    {
+    case '\r':
+    {
+      *(ptr_escaped++) = '\\';
+      *(ptr_escaped++) = 'r';
+      break;
+    }
+    case '\n':
+    {
+      *(ptr_escaped++) = '\\';
+      *(ptr_escaped++) = 'n';
+      break;
+    }
+    case '\t':
+    {
+      *(ptr_escaped++) = '\\';
+      *(ptr_escaped++) = 't';
+      break;
+    }
+
+    default:
+    {
+      *(ptr_escaped++) = *ptr;
+      if (!*ptr)
+      {
+        return escaped;
+      }
+      break;
+    }
+    }
+    ++ptr;
+  }
+}
+
+static void on_mk_webrtc_get_answer_sdp_func(void *user_data, const char *answer, const char *err)
+{
+  const char *response_header[] = {"Content-Type", "application/json", "Access-Control-Allow-Origin", "*", NULL};
+  if (answer)
+  {
+    answer = escape_string(answer);
+  }
+  size_t len = answer ? 2 * strlen(answer) : 1024;
+  char *response_content = (char *)malloc(len);
+
+  if (answer)
+  {
+    snprintf(response_content, len,
+             "{"
+             "\"sdp\":\"%s\","
+             "\"type\":\"answer\","
+             "\"code\":0"
+             "}",
+             answer);
+  }
+  else
+  {
+    snprintf(response_content, len,
+             "{"
+             "\"msg\":\"%s\","
+             "\"code\":-1"
+             "}",
+             err);
+  }
+
+  mk_http_response_invoker_do_string(user_data, 200, response_header, response_content);
+  mk_http_response_invoker_clone_release(user_data);
+  free(response_content);
+  if (answer)
+  {
+    free((void *)answer);
+  }
 }
 
 /**
@@ -80,10 +161,17 @@ void API_CALL on_mk_http_request(
     mk_http_response_invoker_do(invoker, 200, response_header, body);
     mk_http_body_release(body);
   }
+
   //拦截api: /index/api/webrtc
   else if (strcmp(url, "/index/api/webrtc") == 0)
   {
-    mk_webrtc_http_response_invoker_do(invoker, parser, sender);
+    //拦截api: /index/api/webrtc
+    char rtc_url[1024];
+    snprintf(rtc_url, sizeof(rtc_url), "rtc://%s/%s/%s?%s", mk_parser_get_header(parser, "Host"),
+             mk_parser_get_url_param(parser, "app"), mk_parser_get_url_param(parser, "stream"),
+             mk_parser_get_url_params(parser));
+    mk_webrtc_get_answer_sdp(mk_http_response_invoker_clone(invoker), on_mk_webrtc_get_answer_sdp_func,
+                             mk_parser_get_url_param(parser, "type"), mk_parser_get_content(parser, NULL), rtc_url);
   }
   else
   {
@@ -143,6 +231,13 @@ void API_CALL on_mk_http_before_access(const mk_parser parser, char *path, const
   //覆盖path的值可以重定向文件
 }
 
+void API_CALL on_mk_media_play(const mk_media_info url_info,
+                               const mk_auth_invoker invoker,
+                               const mk_sock_info sender)
+{
+  mk_auth_invoker_do(invoker, NULL);
+}
+
 int main(int argc, char *argv[])
 {
   std::cout << "zlmediakit demo" << std::endl;
@@ -181,7 +276,7 @@ int main(int argc, char *argv[])
   CHECKERR(ret, rtsport);
   ret = mk_rtmp_server_start(rtmport, 0);
   CHECKERR(ret, rtmport);
-  mk_set_option("rtc.externIP", publicip);
+  // mk_set_option("rtc.externIP", publicip);
   mk_set_option("rtc.port", publicport);
   ret = mk_rtc_server_start(localport);
   CHECKERR(ret, localport);
@@ -190,6 +285,7 @@ int main(int argc, char *argv[])
   events.on_mk_http_request = on_mk_http_request;
   events.on_mk_http_access = on_mk_http_access;
   events.on_mk_http_before_access = on_mk_http_before_access;
+  events.on_mk_media_play = on_mk_media_play;
 
   mk_events_listen(&events);
 

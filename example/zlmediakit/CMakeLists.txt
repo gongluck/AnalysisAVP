@@ -12,29 +12,35 @@ set(subject ${PROJECT_NAME}_h264server)
 # 包含路径
 include_directories(${subject}
                     ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/include)
-include_directories(${subject}
-                    ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/include)
 
+# windows
 if(WIN32)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
       ${PROJECT_SOURCE_DIR}/../bin/windows/debug)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
       ${PROJECT_SOURCE_DIR}/../bin/windows/release)
+  # win64
   if(CMAKE_CL_64)
     link_directories(
       ${subject}
       ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/lib/windows/x64)
     link_directories(
       ${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/lib/windows/x64)
+    link_directories(
+      ${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/usrsctp/lib/windows/x64)
     link_directories(${subject} "C:/OpenSSL-Win64/lib")
+    # win32
   else()
     link_directories(
       ${subject}
       ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/lib/windows/win32)
     link_directories(
       ${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/lib/windows/win32)
+    link_directories(
+      ${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/usrsctp/lib/windows/win32)
     link_directories(${subject} "C:/OpenSSL-Win32/lib")
   endif()
+  # android
 elseif(ANDROID)
   # set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
@@ -46,7 +52,8 @@ elseif(ANDROID)
     ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/lib/android/${ANDROID_ABI})
   link_directories(
     ${subject}
-    ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/lib/android/${ANDROID_ABI})
+    ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/lib/android/${ANDROID_ABI}
+    ${PROJECT_SOURCE_DIR}/../../3rdparty/usrsctp/lib/android/${ANDROID_ABI})
   if(ANDROID_ABI STREQUAL "armeabi-v7a")
     link_directories(
       ${subject}
@@ -56,7 +63,7 @@ elseif(ANDROID)
       ${subject}
       ${PROJECT_SOURCE_DIR}/../../3rdparty/openssl/lib/android/${ANDROID_ABI})
   endif()
-
+  # linux
 elseif(UNIX)
   # set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -Wall -g2 -ggdb")
@@ -71,7 +78,6 @@ add_executable(${subject} h264_media_server.cpp)
 
 target_link_libraries(
   ${subject}
-  MediaServer
   mk_api
   zlmediakit
   zltoolkit
@@ -80,7 +86,8 @@ target_link_libraries(
   mov
   flv
   jsoncpp
-  srtp2)
+  srtp2
+  usrsctp)
 if(WIN32)
   # windows静态库补充依赖
   target_link_libraries(${subject} openssl libcrypto) # ssl使用静态库
