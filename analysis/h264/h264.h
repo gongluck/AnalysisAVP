@@ -2,15 +2,14 @@
  * @Author: gongluck
  * @Date: 2020-11-02 17:07:19
  * @Last Modified by: gongluck
- * @Last Modified time: 2021-08-02 22:13:40
+ * @Last Modified time: 2023-01-31 17:43:39
  */
 
-#pragma once
+#ifndef __H264_H__
+#define __H264_H__
 
-// Network Abstract Layer Unit
-//网络抽象层单元
-// Advanced Video Codec
-//高阶视频编码解码器
+// Network Abstract Layer Unit 网络抽象层单元
+// Advanced Video Codec 高阶视频编码解码器
 
 #include <stdint.h>
 #include <iostream>
@@ -51,12 +50,16 @@ typedef struct __NALHEADER
 {
   uint8_t nal_unit_type : 5;      // NAL_UNIT_TYPE_XXX，NAL单元的类型
   uint8_t nal_ref_idc : 2;        // NAL_REF_IDC_PRIORITY_XXX，标识重要性，3最高
-  uint8_t forbidden_zero_bit : 1; //必须为0
+  uint8_t forbidden_zero_bit : 1; // 必须为0
 } NALHEADER;
 
 const char *nal_parse_idc(uint8_t idc);
 const char *nal_parse_type(uint8_t type);
 
+#ifdef __cplusplus
 std::ostream &operator<<(std::ostream &os, const NALHEADER &nalheader);
+#endif
 
 int32_t findnalu(uint8_t *data, uint32_t start, uint32_t end, int8_t *nalstep);
+
+#endif //__H264_H__

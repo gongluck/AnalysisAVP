@@ -1,8 +1,8 @@
-/*
+﻿/*
  * @Author: gongluck
  * @Date: 2020-11-02 17:08:28
  * @Last Modified by: gongluck
- * @Last Modified time: 2021-05-14 14:20:14
+ * @Last Modified time: 2023-01-31 18:15:48
  */
 
 #include "h264.h"
@@ -11,8 +11,6 @@
 #include <iomanip>
 #include <fstream>
 #include <malloc.h>
-
-#define PRINTDATA 0
 
 int main(int argc, char *argv[])
 {
@@ -35,7 +33,7 @@ int main(int argc, char *argv[])
 
   unsigned char c = 0;
   int32_t datalen = 0;
-  int step = 0; //记录0x00的个数
+  int step = 0; // 记录0x00的个数
   while (in.read(reinterpret_cast<char *>(&c), 1))
   {
     if (c == 0)
@@ -50,91 +48,78 @@ int main(int argc, char *argv[])
       {
         std::cout << std::string(50, '*').c_str() << std::endl;
         std::cout << "nalu size : " << datalen << std::endl;
-#if PRINTDATA
+#ifdef PRINTDATA
         in.seekg(-naluflagsize - datalen, std::ios::cur);
         unsigned char *naludata = static_cast<unsigned char *>(malloc(datalen));
         if (!in.read(reinterpret_cast<char *>(naludata), datalen))
           break;
+
         NALHEADER *pnalheader = reinterpret_cast<NALHEADER *>(naludata);
         std::cout << *pnalheader << std::endl;
+
         std::ios::fmtflags f(std::cout.flags());
-        for (int i = 0; i < datalen; ++i)
+        for (int i = 1; i < datalen; ++i)
         {
           std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(naludata[i]) << " ";
         }
         std::cout << std::endl;
         std::cout.flags(f);
+
         in.seekg(naluflagsize, std::ios::cur);
         free(naludata);
-#endif
+#endif // PRINTDATA
       }
       datalen = 0;
       step = 0;
     }
     else
     {
-      datalen += step + 1;
+      datalen += step /*00*/ + 1 /*当前B*/;
       step = 0;
     }
   }
+
   std::cout << std::string(50, '*').c_str() << std::endl;
   std::cout << "nalu size : " << datalen << std::endl;
-#if PRINTDATA
+
+#ifdef PRINTDATA
   in.close();
+
   in.open(argv[1], std::ios::binary);
   in.seekg(-datalen, std::ios::end);
   unsigned char *naludata = static_cast<unsigned char *>(malloc(datalen));
   in.read(reinterpret_cast<char *>(naludata), datalen);
+
   NALHEADER *pnalheader = reinterpret_cast<NALHEADER *>(naludata);
   std::cout << *pnalheader << std::endl;
-  std::ios::fmtflags f(std::cout.flags());
+
+  std::ios::fmtflags flags(std::cout.flags());
   for (int i = 0; i < datalen; ++i)
   {
     std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(naludata[i]) << " ";
   }
   std::cout << std::endl;
-  std::cout.flags(f);
+  std::cout.flags(flags);
+
   free(naludata);
-#endif
+#endif // PRINTDATA
+
   in.close();
 
-  uint8_t data[] = {
-      0x00,
-      0x00,
-      0x00,
-      0x01,
-      0x12,
-      0x45,
-      0x55,
-      0x55,
-      0x00,
-      0x00,
-      0x01,
-      0x01,
-      0x18,
-      0x45,
-      0x55,
-      0x55,
-      0x00,
-      0x00,
-      0x00,
-      0x01,
-      0x00,
-      0x00,
-      0x01,
-      0x01,
-  };
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+  uint8_t data[] = {0x00, 0x00, 0x00, 0x01, 0x12, 0x45, 0x55, 0x55, 0x00, 0x00, 0x01, 0x01, 0x18, 0x45, 0x55, 0x55, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x01};
   int8_t nalstep = 0;
   int ret = 0;
-  int tmp = ret;
+  int start = ret;
   while (ret >= 0)
   {
-    tmp = ret;
-    ret = findnalu(data, tmp, sizeof(data), &nalstep);
+    start = ret;
+    ret = findnalu(data, start, sizeof(data), &nalstep);
     if (ret >= 0 && ret < sizeof(data))
     {
       std::ios::fmtflags f(std::cout.flags());
-      for (int i = tmp; i > 0 && i < ret - nalstep; ++i)
+      for (int i = start + 1; i > 0 && i < ret - nalstep + 1; ++i)
       {
         std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(data[i]) << " ";
       }
@@ -143,13 +128,16 @@ int main(int argc, char *argv[])
       nalstep = 0;
     }
   }
+
   std::ios::fmtflags f(std::cout.flags());
-  for (int i = tmp + 1; i > 0 && i < sizeof(data); ++i)
+  for (int i = start + 1; i > 0 && i < sizeof(data); ++i)
   {
     std::cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(data[i]) << " ";
   }
   std::cout << std::endl;
   std::cout.flags(f);
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
 
   in.open(argv[1], std::ios::binary);
   if (in.fail())
@@ -159,7 +147,7 @@ int main(int argc, char *argv[])
   }
 
   char buf[1024] = {0};
-  ret = tmp = 0;
+  ret = start = 0;
   datalen = 0;
   nalstep = 0;
   int readlen = 0;
@@ -168,37 +156,41 @@ int main(int argc, char *argv[])
     readlen = in.gcount();
     while (ret >= 0)
     {
-      tmp = ret;
-      ret = findnalu(reinterpret_cast<uint8_t *>(buf), tmp, readlen, &nalstep);
+      start = ret;
+      ret = findnalu(reinterpret_cast<uint8_t *>(buf), start, readlen, &nalstep);
       if (ret >= 0 && ret < readlen)
       {
-        datalen += ret - tmp - nalstep;
-        std::cout << std::string(50, '*').c_str() << std::endl;
-        std::cout << "nalu size : " << datalen << std::endl;
+        datalen += ret - start - nalstep;
+        if (datalen > 0)
+        {
+          std::cout << std::string(50, '*').c_str() << std::endl;
+          std::cout << "nalu size : " << datalen << std::endl;
+        }
         datalen = 0;
         nalstep = 0;
-        tmp = 0;
+        start = 0;
       }
     }
     ret = 0;
-    datalen += readlen - tmp;
+    datalen += readlen - start;
   }
+
   readlen = in.gcount();
   while (ret >= 0)
   {
-    tmp = ret;
-    ret = findnalu(reinterpret_cast<uint8_t *>(buf), tmp, readlen, &nalstep);
+    start = ret;
+    ret = findnalu(reinterpret_cast<uint8_t *>(buf), start, readlen, &nalstep);
     if (ret >= 0 && ret < readlen)
     {
-      datalen += ret - tmp - nalstep;
+      datalen += ret - start - nalstep;
       std::cout << std::string(50, '*').c_str() << std::endl;
       std::cout << "nalu size : " << datalen << std::endl;
       datalen = 0;
       nalstep = 0;
-      tmp = 0;
+      start = 0;
     }
   }
-  datalen += readlen - tmp - 1;
+  datalen += readlen - start - 1;
   std::cout << std::string(50, '*').c_str() << std::endl;
   std::cout << "nalu size : " << datalen << std::endl;
 

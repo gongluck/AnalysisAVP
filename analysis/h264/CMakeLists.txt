@@ -5,6 +5,8 @@ STRING(REGEX REPLACE ".*/(.*)" "\\1" CURRENT_FOLDER ${CMAKE_CURRENT_SOURCE_DIR})
 
 project(${CURRENT_FOLDER}_analysis)
 
+add_definitions(-DPRINTDATA)
+
 if(WIN32)
 # 分别设置了Debug版本和Release版本可执行文件的输出目录(经测试,windows环境有效)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/debug)
