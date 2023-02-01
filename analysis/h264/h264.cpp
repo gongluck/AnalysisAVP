@@ -65,7 +65,8 @@ const char *nal_parse_type(uint8_t type)
 
 std::ostream &operator<<(std::ostream &os, const NALHEADER &nalheader)
 {
-  os << "nal_ref_idc : " << nal_parse_idc(nalheader.nal_ref_idc)
+  os << "forbidden_zero_bit : " << (int)nalheader.forbidden_zero_bit
+     << "\nnal_ref_idc : " << nal_parse_idc(nalheader.nal_ref_idc)
      << "\nnal_unit_type : " << nal_parse_type(nalheader.nal_unit_type);
   return os;
 }

@@ -2,7 +2,7 @@
  * @Author: gongluck
  * @Date: 2020-11-02 17:07:19
  * @Last Modified by: gongluck
- * @Last Modified time: 2023-01-31 17:43:39
+ * @Last Modified time: 2023-02-01 17:39:21
  */
 
 #ifndef __H264_H__
@@ -12,7 +12,10 @@
 // Advanced Video Codec 高阶视频编码解码器
 
 #include <stdint.h>
+
+#ifdef __cplusplus
 #include <iostream>
+#endif
 
 // NAL ref idc codes
 #define NAL_REF_IDC_PRIORITY_HIGHEST 3
