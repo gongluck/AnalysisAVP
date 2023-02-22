@@ -33,14 +33,24 @@ elseif(ANDROID)
   link_directories(
     ${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/android/${ANDROID_ABI})
-elseif(IOS)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
-    ${PROJECT_SOURCE_DIR}/../bin/ios/debug)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
-    ${PROJECT_SOURCE_DIR}/../bin/ios/release)
-  link_directories(
-    ${PROJECT_NAME}
-    ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/ios)
+elseif(APPLE)
+  if(IOS)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
+      ${PROJECT_SOURCE_DIR}/../bin/apple/ios/debug)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
+      ${PROJECT_SOURCE_DIR}/../bin/apple/ios/release)
+    link_directories(
+      ${PROJECT_NAME}
+      ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/apple/ios)
+  else()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
+      ${PROJECT_SOURCE_DIR}/../bin/apple/osx/debug)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
+      ${PROJECT_SOURCE_DIR}/../bin/apple/osx/release)
+    link_directories(
+      ${PROJECT_NAME}
+      ${PROJECT_SOURCE_DIR}/../../3rdparty/libopus/lib/apple/osx)
+  endif()
 endif()
 
 # 添加源码文件到项目
@@ -59,12 +69,12 @@ if(WIN32)
     set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _win32_d)
     set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _win32_r)
   endif()
-  # android
+# android
 elseif(ANDROID)
   set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _${ANDROID_ABI}_d)
-  set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX
-                                               _${ANDROID_ABI}_r)
-elseif(IOS)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _${ANDROID_ABI}_r)
+# apple
+elseif(APPLE)
   set_property(TARGET ${PROJECT_NAME} PROPERTY DEBUG_POSTFIX _d)
   set_property(TARGET ${PROJECT_NAME} PROPERTY RELEASE_POSTFIX _r)
 endif()
