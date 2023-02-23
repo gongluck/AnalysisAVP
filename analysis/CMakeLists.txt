@@ -8,3 +8,4 @@ project(${CURRENT_FOLDER})
 # 添加子项目
 add_subdirectory(h264)
 add_subdirectory(rtp)
+add_subdirectory(rtsp)
