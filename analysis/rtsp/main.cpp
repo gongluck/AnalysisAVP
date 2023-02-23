@@ -65,21 +65,15 @@ int handle_cmd(SOCKET s, char *request)
         strstr(line, CMD_SETUP) ||
         strstr(line, CMD_PLAY))
     {
-      if (sscanf(line, "%s %s %s\r\n", method, url, version) == 3)
-      {
-      }
+        sscanf(line, "%s %s %s\r\n", method, url, version);
     }
     else if (strstr(line, "CSeq"))
     {
-      if (sscanf(line, "CSeq: %s\r\n", CSeq) == 1)
-      {
-      }
+      sscanf(line, "CSeq: %s\r\n", CSeq);
     }
     else if (!strncmp(line, "Transport:", strlen("Transport:")))
     {
-      if (sscanf(line, "Transport: RTP/AVP/UDP;unicast;client_port=%d-%d\r\n", &rtp_port, &rtcp_port) == 2)
-      {
-      }
+      sscanf(line, "Transport: RTP/AVP/UDP;unicast;client_port=%d-%d\r\n", &rtp_port, &rtcp_port);
     }
     line = nullptr;
   } while (true);
