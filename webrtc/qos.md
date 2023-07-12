@@ -6,13 +6,13 @@
 
 ## RTT
 
-- RR 包
+- [RR](../rtp_rtcp/README.md#receiver-report) 包
 
   ![RR包](../images/webrtc/Qos/rtt/packet_rr.png)
 
 - RTT 更新调用堆栈
 
-  ![RTT更新调用堆栈](../images/webrtc/Qos/rtt/rtt_update_stack.png)
+  ![RTT更新调用堆栈](../images/webrtc/Qos/rtt/rtt_update_callstack.png)
 
 - RTT 更新关键函数
 
@@ -308,5 +308,61 @@
       ++it;
     }
     return nack_batch;
+  }
+  ```
+
+- 发送端重发调用堆栈
+
+  ![发送端重发调用堆栈](../images/webrtc/Qos/nack/sender_resend_callstack.png)
+
+- 发送端重发关键函数
+
+  ```c++
+  int32_t RTPSender::ReSendPacket(uint16_t packet_id) {
+    // Try to find packet in RTP packet history. Also verify RTT here, so that we
+    // don't retransmit too often.
+    absl::optional<RtpPacketHistory::PacketState> stored_packet =
+        packet_history_->GetPacketState(packet_id);
+    if (!stored_packet || stored_packet->pending_transmission) {
+      // Packet not found or already queued for retransmission, ignore.
+      return 0;
+    }
+
+    const int32_t packet_size = static_cast<int32_t>(stored_packet->packet_size);
+    const bool rtx = (RtxStatus() & kRtxRetransmitted) > 0;
+
+    std::unique_ptr<RtpPacketToSend> packet = //查找丢失包
+        packet_history_->GetPacketAndMarkAsPending(
+            packet_id, [&](const RtpPacketToSend& stored_packet) {
+              // Check if we're overusing retransmission bitrate.
+              // TODO(sprang): Add histograms for nack success or failure
+              // reasons.
+              std::unique_ptr<RtpPacketToSend> retransmit_packet;
+              if (retransmission_rate_limiter_ &&
+                  !retransmission_rate_limiter_->TryUseRate(packet_size)) {
+                return retransmit_packet;
+              }
+              if (rtx) {
+                retransmit_packet = BuildRtxPacket(stored_packet);//生成RTX包
+              } else {
+                retransmit_packet =
+                    std::make_unique<RtpPacketToSend>(stored_packet);
+              }
+              if (retransmit_packet) {
+                retransmit_packet->set_retransmitted_sequence_number(
+                    stored_packet.SequenceNumber());
+              }
+              return retransmit_packet;
+            });
+    if (!packet) {
+      return -1;
+    }
+    packet->set_packet_type(RtpPacketMediaType::kRetransmission);
+    packet->set_fec_protect_packet(false);
+    std::vector<std::unique_ptr<RtpPacketToSend>> packets;
+    packets.emplace_back(std::move(packet));
+    paced_sender_->EnqueuePackets(std::move(packets));//重传包入队
+
+    return packet_size;
   }
   ```
