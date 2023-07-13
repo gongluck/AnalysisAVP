@@ -3,6 +3,7 @@
 - [Qos](#qos)
   - [RTT](#rtt)
   - [Nack](#nack)
+  - [FEC](#fec)
 
 ## RTT
 
@@ -366,3 +367,13 @@
     return packet_size;
   }
   ```
+
+## FEC
+
+- fec 打包调用堆栈
+
+  ![fec打包调用堆栈](../images/webrtc/Qos/fec/pack_fec_callstack.png)
+
+- 调整fec参数调用堆栈
+
+  ![调整fec参数调用堆栈](../images/webrtc/Qos/fec/config_fec_callstack.png)
