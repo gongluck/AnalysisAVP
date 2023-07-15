@@ -1,10 +1,17 @@
 # Qos
 
 - [Qos](#qos)
+  - [Fraction lost](#fraction-lost)
   - [RTT](#rtt)
   - [Nack](#nack)
   - [FEC](#fec)
   - [SVC](#svc)
+
+## Fraction lost
+
+- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
+
+- 接收端计算丢包率[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
 
 ## RTT
 

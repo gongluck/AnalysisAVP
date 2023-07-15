@@ -9,7 +9,7 @@
     - [Receiver Report](#receiver-report)
     - [Source Description](#source-description)
     - [Feedback Message](#feedback-message)
-      - [Feedback MessageS Header](#feedback-messages-header)
+      - [Feedback Message Header](#feedback-message-header)
       - [Feedback Control Information](#feedback-control-information)
         - [Generic NACK message](#generic-nack-message)
         - [Picture Loss Indication](#picture-loss-indication)
@@ -113,32 +113,36 @@
 ### Receiver Report
 
 ```c++
-            0                   1                   2                   3
-            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    header |V=2|P|    RC   |   PT=RR=201   |             length            |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-          |                     SSRC of packet sender                     |
-          +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-    report |                 SSRC_1 (SSRC of first source)                 |
-    block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      1    | fraction lost |       cumulative number of packets lost       |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-          |           extended highest sequence number received           |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-          |                      interarrival jitter                      |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-          |                         last SR (LSR)                         |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-          |                   delay since last SR (DLSR)                  |
-          +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-    report |                 SSRC_2 (SSRC of second source)                |
-    block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      2    :                               ...                             :
-          +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
-          |                  profile-specific extensions                  |
-          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+header |V=2|P|    RC   |   PT=RR=201   |             length            |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                     SSRC of packet sender                     |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+report |                 SSRC_1 (SSRC of first source)                 |
+block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  1    | fraction lost |       cumulative number of packets lost       |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |           extended highest sequence number received           |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                      interarrival jitter                      |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                         last SR (LSR)                         |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+       |                   delay since last SR (DLSR)                  |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+report |                 SSRC_2 (SSRC of second source)                |
+block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  2    :                               ...                             :
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+       |                  profile-specific extensions                  |
 ```
+
+- fraction lost: 自上次发送 RR 后 SSRC_n 的丢包率。`fraction lost = (cumulative_loss_ - last_report_cumulative_loss_) / (received_seq_max_ - last_report_seq_max_)`。
+- cumulative number of packets lost: 24 bits，记录 SSRC_n 从开始到现在总共丢失的包。
+- extended highest sequence number received: 32 bits，将序列号扩展为 32bit，用于标识当前收到的最大包序列号。
 
 ### Source Description
 
