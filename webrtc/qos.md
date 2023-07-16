@@ -2,6 +2,7 @@
 
 - [Qos](#qos)
   - [Fraction lost](#fraction-lost)
+  - [Jitter](#jitter)
   - [RTT](#rtt)
   - [Nack](#nack)
   - [FEC](#fec)
@@ -13,11 +14,13 @@
 
 - 接收端计算丢包率[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
 
+## Jitter
+
+- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
+
 ## RTT
 
-- [RR](../rtp_rtcp/README.md#receiver-report) 包
-
-  ![RR包](../images/webrtc/Qos/rtt/packet_rr.png)
+- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
 
 - RTT 更新调用堆栈
 
