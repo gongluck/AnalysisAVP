@@ -10,7 +10,9 @@
 
 ## Fraction lost
 
-- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
+- 丢包分为拥塞丢包，随机丢包等。随机丢包情况下，不能通过得到的丢包率认为当前网络质量差，发生拥塞。这也是现在很多拥塞控制算法不使用丢包率作为主要衡量指标的原因。
+
+- 在WebRTC中，一般是通过[Receiver Report](../rtp_rtcp/README.md#receiver-report)反馈丢包信息。RR记录着丢包相关统计。
 
 - 接收端计算丢包率[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
 
