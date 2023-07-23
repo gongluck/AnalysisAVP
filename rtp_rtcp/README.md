@@ -129,7 +129,7 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 - RR 包
   ![RR包](../images/webrtc/Qos/rtt/packet_rr.png)
-- fraction lost: 自上次发送 RR 后 SSRC*n 的丢包率。`fraction lost = (cumulative_loss* - last*report_cumulative_loss*) / (received*seq_max* - last*report_seq_max*)`。
+- fraction lost: 自上次发送 RR 后 SSRC*n 的丢包率。`fraction lost = (cumulative_loss_ - last_report_cumulative_loss_) / (received_seq_max_ - last_report_seq_max_)`。
 - cumulative number of packets lost: 24 bits，记录 SSRC_n 从开始到现在总共丢失的包。
 - extended highest sequence number received: 32 bits，将序列号扩展为 32bit，用于标识当前收到的最大包序列号。
 - last SR timestamp (LSR): 32 bits。64 位 NTP 时间戳中间的 32bit（NTP 时间戳指绝对时间，相对 1900 年 1 月 1 日 00:00:00 经历的时间，单位为秒。完整 NTP 时间戳用 64bits 表示，左半 32bits 表示整数，右半 32bits 表示小数，一般为了紧凑，取中间 32bits 表示即可，这时整数与小数分别 16bits 表示）。记录着上次源 SSRC_n 发送 SR 的 NTP 时间，从收到的 SR 记录的 NTP 时间戳获取。如果没有收到 SR，值为 0。
