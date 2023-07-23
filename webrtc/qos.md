@@ -16,6 +16,134 @@
 
 - 接收端计算丢包率[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
 
+  <details>
+  <summary>计算丢包率</summary>
+
+  ```c++
+  // 计算RTCP统计信息
+  RtcpStatistics StreamStatisticianImpl::CalculateRtcpStatistics() {
+    RtcpStatistics stats;
+    // Calculate fraction lost.
+    int64_t exp_since_last =  // 计算期望收到的包数
+        received_seq_max_ - last_report_seq_max_;
+
+    int32_t lost_since_last =  // 计算本周期的丢包数
+        cumulative_loss_ - last_report_cumulative_loss_;
+    if (exp_since_last > 0 && lost_since_last > 0) {
+      // Scale 0 to 255, where 255 is 100% loss.
+      stats.fraction_lost =  // 计算丢包率
+          static_cast<uint8_t>(255 * lost_since_last / exp_since_last);
+    } else {
+      stats.fraction_lost = 0;
+    }
+
+    // TODO(danilchap): Ensure |stats.packets_lost| is clamped to fit in a signed
+    // 24-bit value.
+    stats.packets_lost = cumulative_loss_ + cumulative_loss_rtcp_offset_;
+    if (stats.packets_lost < 0) {  // 防止符号位溢出
+      // Clamp to zero. Work around to accomodate for senders that misbehave with
+      // negative cumulative loss.
+      stats.packets_lost = 0;
+      cumulative_loss_rtcp_offset_ = -cumulative_loss_;
+    }
+
+    // 当前收到的最大包序列号
+    stats.extended_highest_sequence_number =
+        static_cast<uint32_t>(received_seq_max_);
+
+    // Only for report blocks in RTCP SR and RR.
+    last_report_cumulative_loss_ = cumulative_loss_;
+    last_report_seq_max_ = received_seq_max_;
+
+    return stats;
+  }
+  ```
+  </details>
+
+  <details>
+  <summary>丢包统计</summary>
+
+  ```c++
+  // 更新计数
+  void StreamStatisticianImpl::UpdateCounters(const RtpPacketReceived& packet) {
+    --cumulative_loss_;  // 丢包数减1，如果要想得到原始丢包率，重传包就不能进入这里统计了，WebRTC提供了RTX机制，重传包用额外SSRC的包发送，这样重传包就不会干扰原始媒体包的统计。
+
+    int64_t sequence_number =
+        seq_unwrapper_.UnwrapWithoutUpdate(packet.SequenceNumber());
+
+    if (!ReceivedRtpPacket()) {  // 第一个包
+      received_seq_first_ = sequence_number;
+      last_report_seq_max_ = sequence_number - 1;
+      received_seq_max_ = sequence_number - 1;
+    } else if (UpdateOutOfOrder(packet, sequence_number,
+                                now_ms) /*检查是否乱序包*/) {
+      return;
+    }
+
+    // 下面为非乱序情况
+
+    // In order packet.
+    cumulative_loss_ += sequence_number - received_seq_max_;  // 修正丢包数
+    received_seq_max_ =
+        sequence_number;  // 非乱序下，接收到的最大包序号自然是当前包序号
+    seq_unwrapper_.UpdateLast(sequence_number);
+  }   
+
+  // 乱序包更新统计
+  bool StreamStatisticianImpl::UpdateOutOfOrder(const RtpPacketReceived& packet,
+                                                int64_t sequence_number,
+                                                int64_t now_ms) {
+    if (sequence_number >
+        received_seq_max_)  // 当前包序号比上个周期的最大包序号大，为非乱序包
+      return false;
+
+    // 下面是乱序情况
+
+    return true;
+  }
+  ```
+  </details>
+
+- 发送端计算丢包率[send_side_bandwidth_estimation.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/congestion_controller/goog_cc/send_side_bandwidth_estimation.cc)
+
+  <details>
+  <summary>计算丢包率</summary>
+
+  ```c++
+  // 更新丢包信息
+  void SendSideBandwidthEstimation::UpdatePacketsLost(int64_t packets_lost,
+                                                      int64_t number_of_packets,
+                                                      Timestamp at_time) {
+    // Check sequence number diff and weight loss report
+    if (number_of_packets > 0) {
+      int64_t expected =
+          expected_packets_since_last_loss_update_ + number_of_packets;
+
+      // Don't generate a loss rate until it can be based on enough packets.
+      if (expected < kLimitNumPackets) {  // 阈值判断
+        // Accumulate reports.
+        expected_packets_since_last_loss_update_ = expected;
+        lost_packets_since_last_loss_update_ += packets_lost;
+        return;
+      }
+
+      has_decreased_since_last_fraction_loss_ = false;
+      // 左移8位避免浮点运算
+      int64_t lost_q8 = (lost_packets_since_last_loss_update_ + packets_lost)
+                        << 8;
+      last_fraction_loss_ = std::min<int>(lost_q8 / expected, 255);
+
+      // Reset accumulators.
+      lost_packets_since_last_loss_update_ = 0;
+      expected_packets_since_last_loss_update_ = 0;
+      last_loss_packet_report_ = at_time;
+      UpdateEstimate(at_time);
+    }
+    UpdateUmaStatsPacketsLost(at_time, packets_lost);
+  }
+  ```
+  </details>
+
 ## Jitter
 
 - [Receiver Report](../rtp_rtcp/README.md#receiver-report)
