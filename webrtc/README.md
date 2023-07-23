@@ -22,9 +22,9 @@
 
 [Web端接口文档](https://www.w3.org/TR/webrtc/)
 
-[chrome调试页面](chrome://webrtc-internals/)
+[chrome调试页面`chrome://webrtc-internals/`](chrome://webrtc-internals/)
 
-## [WebRTC使用例子](./example/WebRTC)
+## [WebRTC使用例子](../example/WebRTC)
 
 ## WebRTC源码
 
