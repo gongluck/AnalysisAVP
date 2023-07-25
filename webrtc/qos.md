@@ -12,7 +12,7 @@
 
 - 丢包分为拥塞丢包，随机丢包等。随机丢包情况下，不能通过得到的丢包率认为当前网络质量差，发生拥塞。这也是现在很多拥塞控制算法不使用丢包率作为主要衡量指标的原因。
 
-- 在WebRTC中，一般是通过[Receiver Report](../rtp_rtcp/README.md#receiver-report)反馈丢包信息。RR记录着丢包相关统计。
+- 在 WebRTC 中，一般是通过[Receiver Report](../rtp_rtcp/README.md#receiver-report)反馈丢包信息。RR 记录着丢包相关统计。
 
 - 接收端计算丢包率[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
 
@@ -58,6 +58,7 @@
     return stats;
   }
   ```
+
   </details>
 
   <details>
@@ -87,7 +88,7 @@
     received_seq_max_ =
         sequence_number;  // 非乱序下，接收到的最大包序号自然是当前包序号
     seq_unwrapper_.UpdateLast(sequence_number);
-  }   
+  }
 
   // 乱序包更新统计
   bool StreamStatisticianImpl::UpdateOutOfOrder(const RtpPacketReceived& packet,
@@ -102,6 +103,7 @@
     return true;
   }
   ```
+
   </details>
 
 - 发送端计算丢包率[send_side_bandwidth_estimation.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/congestion_controller/goog_cc/send_side_bandwidth_estimation.cc)
@@ -142,95 +144,113 @@
     UpdateUmaStatsPacketsLost(at_time, packets_lost);
   }
   ```
+
   </details>
 
 ## Jitter
 
-- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
+- 增益参数 1/16 是为了消除噪声影响，使抖动收敛在较合理范围内，避免突发数据的影响。
+- 接收端计算抖动[receive_statistics_impl.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/receive_statistics_impl.cc)
+
+  <details>
+  <summary>计算抖动</summary>
+
+  ```c++
+  // 更新抖动
+  void StreamStatisticianImpl::UpdateJitter(const RtpPacketReceived& packet,
+                                            int64_t receive_time_ms) {
+    int64_t receive_diff_ms =  // 包到达时间间隔
+        receive_time_ms - last_receive_time_ms_;
+
+    uint32_t receive_diff_rtp =  // 包到达时间间隔，rtp时间戳
+        static_cast<uint32_t>(
+            (receive_diff_ms * packet.payload_type_frequency()) / 1000);
+
+    int32_t time_diff_samples =  // 抖动延时
+        receive_diff_rtp - (packet.Timestamp() - last_received_timestamp_);
+
+    time_diff_samples = std::abs(time_diff_samples);
+
+    // lib_jingle sometimes deliver crazy jumps in TS for the same stream.
+    // If this happens, don't update jitter value. Use 5 secs video frequency
+    // as the threshold.
+    if (time_diff_samples < 450000) {  // 5秒视频频率作为阈值
+      // jitter(i) = jitter(i-1) + (time_diff(i, i-1) - jitter(i-1)) / 16
+      // Note we calculate in Q4 to avoid using float.
+      int32_t jitter_diff_q4 =                    // time_diff*16 - jitter(i-1)*16
+          (time_diff_samples << 4) - jitter_q4_;  // 左移4位，避免使用浮点运算
+      jitter_q4_ +=  //(time_diff*16-jitter(i-1)*16)/16 == time_diff-jitter(i-1)
+          ((jitter_diff_q4 + 8) >> 4);
+    }
+  }
+  ```
+
+  </details>
 
 ## RTT
 
-- [Receiver Report](../rtp_rtcp/README.md#receiver-report)
+- WebRTC 中目前有两种方式计算 RTT：
 
-- RTT 更新调用堆栈
+  - 基于媒体流发送端的计算（默认开启）。通过 [Sender Report](../rtp_rtcp/README.md#sender-report)（SR）与 [Receiver Report](../rtp_rtcp/README.md#receiver-report)（RR）携带的信息。
 
-  ![RTT更新调用堆栈](../images/webrtc/Qos/rtt/rtt_update_callstack.png)
+  - 基于媒体流接收端的计算。通过 [RTCP Extended Reports RTCP](../rtp_rtcp/README.md#extended-reports)（XR）携带的信息。
 
-- RTT 更新关键函数
+- 发送端计算 RTT[rtcp_receiver.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc)
+
+  <details>
+  <summary>计算RTT</summary>
 
   ```c++
+  // 处理反馈报告
   void RTCPReceiver::HandleReportBlock(const ReportBlock& report_block,
                                       PacketInformation* packet_information,
                                       uint32_t remote_ssrc) {
-    // This will be called once per report block in the RTCP packet.
-    // We filter out all report blocks that are not for us.
-    // Each packet has max 31 RR blocks.
-    //
-    // We can calc RTT if we send a send report and get a report block back.
-
-    // |report_block.source_ssrc()| is the SSRC identifier of the source to
-    // which the information in this reception report block pertains.
-
-    // Filter out all report blocks that are not for us.
-    if (registered_ssrcs_.count(report_block.source_ssrc()) == 0)
-      return;
-
-    last_received_rb_ = clock_->CurrentTime();
-
-    ReportBlockData* report_block_data =
-        &received_report_blocks_[report_block.source_ssrc()][remote_ssrc];
-    RTCPReportBlock rtcp_report_block;
-    rtcp_report_block.sender_ssrc = remote_ssrc;
-    rtcp_report_block.source_ssrc = report_block.source_ssrc();
-    rtcp_report_block.fraction_lost = report_block.fraction_lost();
-    rtcp_report_block.packets_lost = report_block.cumulative_lost_signed();
-    if (report_block.extended_high_seq_num() >
-        report_block_data->report_block().extended_highest_sequence_number) {
-      // We have successfully delivered new RTP packets to the remote side after
-      // the last RR was sent from the remote side.
-      last_increased_sequence_number_ = last_received_rb_;
-    }
-    rtcp_report_block.extended_highest_sequence_number =
-        report_block.extended_high_seq_num();
-    rtcp_report_block.jitter = report_block.jitter();
-    rtcp_report_block.delay_since_last_sender_report =
-        report_block.delay_since_last_sr();
-    rtcp_report_block.last_sender_report_timestamp = report_block.last_sr();
-    report_block_data->SetReportBlock(rtcp_report_block, rtc::TimeUTCMicros());
-
     int64_t rtt_ms = 0;
-    uint32_t send_time_ntp = report_block.last_sr();
-    // RFC3550, section 6.4.1, LSR field discription states:
-    // If no SR has been received yet, the field is set to zero.
-    // Receiver rtp_rtcp module is not expected to calculate rtt using
-    // Sender Reports even if it accidentally can.
-
-    // TODO(nisse): Use this way to determine the RTT only when |receiver_only_|
-    // is false. However, that currently breaks the tests of the
-    // googCaptureStartNtpTimeMs stat for audio receive streams. To fix, either
-    // delete all dependencies on RTT measurements for audio receive streams, or
-    // ensure that audio receive streams that need RTT and stats that depend on it
-    // are configured with an associated audio send stream.
+    uint32_t send_time_ntp = report_block.last_sr();  // SR发送时间
     if (send_time_ntp != 0) {
-      uint32_t delay_ntp = report_block.delay_since_last_sr();
+      uint32_t delay_ntp = report_block.delay_since_last_sr();  // 接收端处理延时
       // Local NTP time.
-      uint32_t receive_time_ntp =
+      uint32_t receive_time_ntp =  // RR接收时间
           CompactNtp(TimeMicrosToNtp(last_received_rb_.us()));
 
       // RTT in 1/(2^16) seconds.
-      uint32_t rtt_ntp = receive_time_ntp - delay_ntp - send_time_ntp;
+      uint32_t rtt_ntp =  // rtt = RR接收时间 - 接收端处理延时 - SR发送时间
+          receive_time_ntp - delay_ntp - send_time_ntp;
       // Convert to 1/1000 seconds (milliseconds).
       rtt_ms = CompactNtpRttToMs(rtt_ntp);
       report_block_data->AddRoundTripTimeSample(rtt_ms);
 
       packet_information->rtt_ms = rtt_ms;
     }
-
-    packet_information->report_blocks.push_back(
-        report_block_data->report_block());
-    packet_information->report_block_datas.push_back(*report_block_data);
   }
   ```
+
+  </details>
+
+- 接收端计算 RTT[rtcp_receiver.cc](https://github.com/gongluck/sourcecode/blob/main/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc)
+
+  <details>
+  <summary>计算RTT</summary>
+
+  ```c++
+  // 处理DLRR Report Block
+  void RTCPReceiver::HandleXrDlrrReportBlock(const rtcp::ReceiveTimeInfo& rti) {
+    // The send_time and delay_rr fields are in units of 1/2^16 sec.
+    uint32_t send_time_ntp = rti.last_rr;
+    // RFC3611, section 4.5, LRR field discription states:
+    // If no such block has been received, the field is set to zero.
+    if (send_time_ntp == 0)
+      return;
+
+    uint32_t delay_ntp = rti.delay_since_last_rr;
+    uint32_t now_ntp = CompactNtp(TimeMicrosToNtp(clock_->TimeInMicroseconds()));
+
+    uint32_t rtt_ntp = now_ntp - delay_ntp - send_time_ntp;
+    xr_rr_rtt_ms_ = CompactNtpRttToMs(rtt_ntp);
+  }
+  ```
+
+  </details>
 
 ## Nack
 
