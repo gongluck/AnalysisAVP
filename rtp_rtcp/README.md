@@ -15,6 +15,10 @@
       - [Feedback Control Information](#feedback-control-information)
         - [Generic NACK message](#generic-nack-message)
         - [Picture Loss Indication](#picture-loss-indication)
+      - [Transport Feedback](#transport-feedback)
+        - [Packet Chunk](#packet-chunk)
+          - [Run Length Chunk](#run-length-chunk)
+          - [Status Vector Chunk](#status-vector-chunk)
     - [Extended Reports](#extended-reports)
       - [Extended Reports Header](#extended-reports-header)
       - [Report Blocks](#report-blocks)
@@ -234,6 +238,78 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  The PLI FB message is identified by PT=PSFB and FMT=1.
  There MUST be exactly one PLI contained in the FCI field.
 ```
+
+#### Transport Feedback
+
+```c++
+     0                   1                   2                   3
+     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |V=2|P|  FMT=15 |    PT=205     |           length              |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  0 |                     SSRC of packet sender                     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  4 |                      SSRC of media source                     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  8 |      base sequence number     |      packet status count      |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 12 |                 reference time                | fb pkt. count |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ 16 |          packet chunk         |         packet chunk          |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    .                                                               .
+    .                                                               .
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |         packet chunk          |  recv delta   |  recv delta   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    .                                                               .
+    .                                                               .
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |           recv delta          |  recv delta   | zero padding  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- FMT：5bits。Feedback message type(FMT)固定为 15。
+- PT：8bits。由于属于传输层的 Feedback Messages，所以 payload type(PT)为 205。
+- base sequence number：2 字节，TransportFeedback 包中记录的第一个 RTP 包的 transport sequence number，在反馈的各个 TransportFeedback RTCP 包中，这个字段不一定是递增的，也有可能比之前的 RTCP 包小。
+- packet status count：2 字节，表示这个 TransportFeedback 包记录了多少个 RTP 包信息，这些 RTP 的 transport sequence number 以 base sequence number 为基准，比如记录的第一个 RTP 包的 transport sequence number 为 base sequence number，那么记录的第二个 RTP 包 transport sequence number 为 base sequence number+1。
+- reference time：3 字节，表示参考时间，以 64ms 为单位，RTCP 包记录的 RTP 包到达时间信息以这个 reference time 为基准进行计算。
+- feedback packet count：1 字节，用于计数发送的每个 TransportFeedback 包，相当于 RTCP 包的序列号。可用于检测 TransportFeedback 包的丢包情况。
+- packet chunk：2 字节，记录 RTP 包的到达状态，记录的这些 RTP 包 transport sequence number 通过 base sequence number 计算得到。
+- recv delta：8bits，对于 packet received 状态的包，也就是收到的 RTP 包，在 recv delta 列表中添加对应的的到达时间间隔信息，用于记录 RTP 包到达时间信息。通过前面的 reference time 以及 recv delta 信息，就可以得到 RTP 包到达时间。
+  - 如果在 packet chunk 记录了一个 Packet received, small delta 状态的包，那么就会在 receive delta 列表中添加一个无符号 1 字节长度 receive delta，无符号 1 字节取值范围[0,255]，由于 Receive Delta 以 0.25ms 为单位，故此时 Receive Delta 取值范围[0, 63.75]ms。
+  - 如果在 packet chunk 记录了一个 Packet received, large or negative delta 状态的包，那么就会在 receive delta 列表中添加一个有符号 2 字节长度的 receive delta，范围[-8192.0, 8191.75] ms。
+  - 如果时间间隔超过了最大限制，那么就会构建一个新的 TransportFeedback RTCP 包，由于 reference time 长度为 3 字节，所以目前的包中 3 字节长度能够覆盖很大范围了。
+
+##### Packet Chunk
+
+###### Run Length Chunk
+
+```c++
+   0                   1
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |T| S |       Run Length        |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- chunk type (T)：1 bit，值为 0。
+- packet status symbol (S)：2 bits，标识包状态。
+- run length (L)：13 bits，行程长度，标识有多少个连续包为相同状态。
+
+###### Status Vector Chunk
+
+```c++
+  0                   1
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |T|S|       symbol list         |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- chunk type (T)：1 bit，值为 1。
+- symbol size(S)：1 bit，为 0 表示只包含 packet not received(0)以及 packet received(1)状态，每个状态使用 1bit 表示，这样后面 14bits 的 symbol list 能标识 14 个包的状态。为 1 表示使用 2bits 来标识包状态，这样 symbol list 中我们只能标识 7 个包的状态。
+- symbol list：14 bits，标识一系列包的状态, 总共能标识 7 或 14 个包的状态。
 
 ### Extended Reports
 
