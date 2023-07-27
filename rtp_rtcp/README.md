@@ -15,6 +15,7 @@
       - [Feedback Control Information](#feedback-control-information)
         - [Generic NACK message](#generic-nack-message)
         - [Picture Loss Indication](#picture-loss-indication)
+        - [Full Intra Request](#full-intra-request)
       - [Transport Feedback](#transport-feedback)
         - [Packet Chunk](#packet-chunk)
           - [Run Length Chunk](#run-length-chunk)
@@ -197,25 +198,25 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #### Feedback Message Header
 
 ```c++
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |V=2|P|   FMT   |       PT      |          length               |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                  SSRC of packet sender                        |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |                  SSRC of media source                         |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   :            Feedback Control Information (FCI)
+  0                   1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |V=2|P|   FMT   |       PT      |          length               |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                  SSRC of packet sender                        |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ |                  SSRC of media source                         |
+ +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ :            Feedback Control Information (FCI)
 
-  Payload type (PT): 8 bits
-    This is the RTCP packet type that identifies the packet as being
-    an RTCP FB message.  Two values are defined by the IANA:
+Payload type (PT): 8 bits
+  This is the RTCP packet type that identifies the packet as being
+  an RTCP FB message.  Two values are defined by the IANA:
 
-    Name   | Value | Brief Description
-    ----------+-------+------------------------------------
-    RTPFB  |  205  | Transport layer FB message
-    PSFB   |  206  | Payload-specific FB message
+  Name   | Value | Brief Description
+  ----------+-------+------------------------------------
+  RTPFB  |  205  | Transport layer FB message
+  PSFB   |  206  | Payload-specific FB message
 ```
 
 #### Feedback Control Information
@@ -235,9 +236,52 @@ block  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ##### Picture Loss Indication
 
 ```c++
- The PLI FB message is identified by PT=PSFB and FMT=1.
- There MUST be exactly one PLI contained in the FCI field.
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |V=2|P|  FMT=1  |     PT=206    |          length               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                  SSRC of packet sender                        |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |             SSRC of media source (unused) = 0                 |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+- 对于 PLI，由于只需要通知发送关键帧，无需携带其他消息，所以 FCI 部分为空。
+- 对于 FMT 规定为 1，PT 规定为 PSFB。
+
+##### Full Intra Request
+
+```c++
+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |V=2|P|  FMT=4  |     PT=206    |          length               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                  SSRC of packet sender                        |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |             SSRC of media source (unused) = 0                 |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  :            Feedback Control Information (FCI)                 :
+  :                                                               :
+// Full intra request (FIR) (RFC 5104).
+// The Feedback Control Information (FCI) for the Full Intra Request
+// consists of one or more FCI entries.
+// FCI:
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                              SSRC                             |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  | Seq nr.       |    Reserved = 0                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- FMT 规定为 4，PT 规定为 PSFB。
+- 由于 FIR 可用于通知多个编码发送端（例如多点视频会议情况），所以用到了 FCI 部分，填充多个发送端的 ssrc 信息。
+- PLI 消息是用于丢包情况下的通知，而 FIR 却不是，在有些非丢包情况下，FIR 就要用到。
 
 #### Transport Feedback
 
