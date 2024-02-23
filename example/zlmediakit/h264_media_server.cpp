@@ -108,8 +108,8 @@ static void on_mk_webrtc_get_answer_sdp_func(void *user_data, const char *answer
              err);
   }
 
-  mk_http_response_invoker_do_string(user_data, 200, response_header, response_content);
-  mk_http_response_invoker_clone_release(user_data);
+  mk_http_response_invoker_do_string((const mk_http_response_invoker)user_data, 200, response_header, response_content);
+  mk_http_response_invoker_clone_release((const mk_http_response_invoker)user_data);
   free(response_content);
   if (answer)
   {
@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
   mk_track_unref(v_track);
 
   //创建h264分帧器
-  mk_h264_splitter splitter = mk_h264_splitter_create(on_h264_frame, media);
+  mk_h264_splitter splitter = mk_h264_splitter_create(on_h264_frame, media, false);
 
   const int inputsize = 1024;
   char indata[1024];

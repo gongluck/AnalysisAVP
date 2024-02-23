@@ -9,10 +9,6 @@ project(${CURRENT_FOLDER}_example)
 
 set(subject ${PROJECT_NAME}_h264server)
 
-# 包含路径
-include_directories(${subject}
-                    ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/include)
-
 # windows
 if(WIN32)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
@@ -43,25 +39,16 @@ if(WIN32)
   # android
 elseif(ANDROID)
   # set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
-      ${PROJECT_SOURCE_DIR}/../bin/android/debug)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
-      ${PROJECT_SOURCE_DIR}/../bin/android/release)
-  link_directories(
-    ${subject}
-    ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/lib/android/${ANDROID_ABI})
-  link_directories(
-    ${subject}
-    ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/lib/android/${ANDROID_ABI}
-    ${PROJECT_SOURCE_DIR}/../../3rdparty/usrsctp/lib/android/${ANDROID_ABI})
+  include_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/install/android/android-22/${ANDROID_ABI}/include)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_SOURCE_DIR}/../bin/android/debug)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_SOURCE_DIR}/../bin/android/release)
+  link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/ZLMediaKit/install/android/android-22/${ANDROID_ABI}/lib)
+  link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/libsrtp/install/android/android-22/${ANDROID_ABI}/lib)
+  link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/usrsctp/install/android/android-22/${ANDROID_ABI}/lib)
   if(ANDROID_ABI STREQUAL "armeabi-v7a")
-    link_directories(
-      ${subject}
-      ${PROJECT_SOURCE_DIR}/../../3rdparty/openssl/lib/android/armeabi)
+    link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/openssl/install/android/android-arm/lib)
   else()
-    link_directories(
-      ${subject}
-      ${PROJECT_SOURCE_DIR}/../../3rdparty/openssl/lib/android/${ANDROID_ABI})
+    link_directories(${subject} ${PROJECT_SOURCE_DIR}/../../3rdparty/openssl/install/android/${ANDROID_ABI}/lib)
   endif()
   # linux
 elseif(UNIX)
@@ -75,16 +62,16 @@ endif()
 
 # 添加源码文件到项目
 add_executable(${subject} h264_media_server.cpp)
-
-target_link_libraries(
-  ${subject}
+target_link_libraries(${subject}
+  MediaServer
   mk_api
+  webrtc
+  ext-codec
   zlmediakit
   zltoolkit
-  webrtc
-  mpeg
   mov
   flv
+  mpeg
   jsoncpp
   srtp2
   usrsctp)
