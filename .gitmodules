@@ -9,3 +9,4 @@
 [submodule "3rdparty"]
 	path = 3rdparty
 	url = https://github.com/gongluck/3rdparty.git
+	branch = main
