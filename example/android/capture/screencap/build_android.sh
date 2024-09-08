@@ -11,7 +11,7 @@ export INSTALLPATH=$(pwd)/bin
 rm -r $BUILDPATH
 rm -r $INSTALLPATH
 
-export buildparams=-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake -DCMAKE_MAKE_PROGRAM=$ANDROID_NDK_ROOT/prebuilt/linux-x86_64/bin/make
+export buildparams="-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake -DCMAKE_MAKE_PROGRAM=$ANDROID_NDK_ROOT/prebuilt/linux-x86_64/bin/make"
 
 cmake -G "Unix Makefiles" -S . -B $BUILDPATH \
    -DANDROID_NDK=$ANDROID_NDK_ROOT $buildparams \

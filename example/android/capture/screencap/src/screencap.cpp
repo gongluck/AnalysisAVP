@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+// https://gongluck.github.io/av/screencap
 // from: /platform/framework/base/cmds/screencap/screencap.cpp
 
 #include <errno.h>
