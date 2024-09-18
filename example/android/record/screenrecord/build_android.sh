@@ -11,8 +11,8 @@ export INSTALLPATH=$(pwd)/bin
 rm -r $BUILDPATH
 rm -r $INSTALLPATH
 
-aidl -h include -o build/aidl --lang=cpp $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl/android/IOMXNode.aidl
-aidl -I $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl -h include -o build/aidl --lang=cpp $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl/android/IGraphicBufferSource.aidl
+aidl -h build/aidl/include -o build/aidl/cpp --lang=cpp $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl/android/IOMXNode.aidl
+aidl -I $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl -h build/aidl/include -o build/aidl/cpp --lang=cpp $ANDROID_PLATFORM_DIR/frameworks/av/media/libmedia/aidl/android/IGraphicBufferSource.aidl
 
 export buildparams="-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake -DCMAKE_MAKE_PROGRAM=$ANDROID_NDK_ROOT/prebuilt/linux-x86_64/bin/make"
 

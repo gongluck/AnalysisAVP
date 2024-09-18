@@ -11,7 +11,7 @@ project(${CURRENT_FOLDER})
 set(subject ${PROJECT_NAME})
 
 include_directories(${subject} include/
-  include/aidl
+  build/aidl/include
 
   ${ANDROID_PLATFORM_DIR}/system/core/include
   ${ANDROID_PLATFORM_DIR}/system/core/base/include
