@@ -26,13 +26,12 @@ Samples
 *.a
 *.so
 *.iml
-*\.gradle
-*\.idea
-*\local.properties
-*\.DS_Store
-*\captures
-*\.externalNativeBuild
-*\.cxx
+*.gradle
+*.idea
+**/local.properties
+**/.DS_Store
+**/captures
+**/.externalNativeBuild
 
 #apple
 *.xcuserstate
