@@ -9,6 +9,8 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.Log;
 
+//https://pragprog.com/titles/kbogla/opengl-es-2-for-android
+
 public class MainActivity extends AppCompatActivity {
 
     final String TAG = "opengles-java";
@@ -31,9 +33,12 @@ public class MainActivity extends AppCompatActivity {
         //选择哪个EGLContext客户端版本
         glSurfaceView.setEGLContextClientVersion(2);
         //设置渲染器
-        glSurfaceView.setRenderer(new OpenGLESRenderer());
+        //glSurfaceView.setRenderer(new OpenGLESRenderer());
+        glSurfaceView.setRenderer(new AirHockeyRenderer(this));
         //设置按请求刷新
         //glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+
+        rendererSet = true;
 
         //setContentView(R.layout.activity_main);
         setContentView(glSurfaceView);
