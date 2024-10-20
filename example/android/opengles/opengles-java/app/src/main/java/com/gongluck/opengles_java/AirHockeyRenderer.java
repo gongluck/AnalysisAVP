@@ -11,6 +11,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.*;
+import static android.opengl.Matrix.*;
 
 public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
@@ -23,10 +24,13 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     private FloatBuffer vertexData;//本地堆
 
     private int program;
-    private static final String _POSITION = "_Position";
+    private static final String A_POSITION = "a_Position";
     private int positionLocation;
-    private static final String _COLOR = "_Color";
+    private static final String A_COLOR = "a_Color";
     private int colorLocation;
+    private static final String U_MATRIX = "u_Matrix";
+    private final float[] projectionMatrix = new float[16];
+    private int uMatrixLocation;
 
     public AirHockeyRenderer(Context context) {
         this.context = context;
@@ -38,19 +42,19 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
                 //三角形扇顶点
                 0f, 0f, 1f, 1f, 1f,
-                -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-                0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-                0.5f, 0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f, 0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
+                -0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
+                0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
+                0.5f, 0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f, 0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
 
                 //线
                 -0.5f, 0f, 1f, 0f, 0f,
                 0.5f, 0f, 0f, 1f, 0f,
 
                 //椎
-                0f, -0.25f, 0f, 0f, 1f,
-                0f, 0.25f, 1f, 0f, 0f,
+                0f, -0.4f, 0f, 0f, 1f,
+                0f, 0.4f, 1f, 0f, 0f,
         };
         vertexData = ByteBuffer.allocateDirect(tableVerticesWithTriangles.length * BYTES_PER_FLOAT).order(ByteOrder.nativeOrder()).asFloatBuffer();
         vertexData.put(tableVerticesWithTriangles);
@@ -77,13 +81,13 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
         glUseProgram(program);
 
         //获取opengl程序中的属性索引
-        positionLocation = glGetAttribLocation(program, _POSITION);
+        positionLocation = glGetAttribLocation(program, A_POSITION);
 
         //获取opengl程序中的统一变量索引
-        //colorLocation = glGetUniformLocation(program, _COLOR);
+        //colorLocation = glGetUniformLocation(program, A_COLOR);
 
         //获取opengl程序中的属性索引
-        colorLocation = glGetAttribLocation(program, _COLOR);
+        colorLocation = glGetAttribLocation(program, A_COLOR);
 
         vertexData.position(0);
         //传递_Position的数据
@@ -96,12 +100,27 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
         glVertexAttribPointer(colorLocation, COLOR_COMPONENT_COUNT, GL_FLOAT, false, STRIDE, vertexData);
         //使能v_Color属性
         glEnableVertexAttribArray(colorLocation);
+
+        //获取opengl程序中的统一变量索引
+        uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl10, int width, int height) {
         //设置视口范围
         glViewport(0, 0, width, height);
+
+        final float aspectRatio = width > height ? (float) width / (float) height : (float) height / (float) width;
+        //创建正交投影矩阵
+        //orthoM(projectionMatrix, 0, -1f, 1f, -1f, 1f, -1f, 1f);//放大x轴
+        if (width > height) {
+            orthoM(projectionMatrix, 0, -aspectRatio, aspectRatio, -1f, 1f, -1f, 1f);//放大x轴
+        } else {
+            orthoM(projectionMatrix, 0, -1f, 1f, -aspectRatio, aspectRatio, -1f, 1f);//放大y轴
+        }
+
+        //更新u_Matrix
+        glUniformMatrix4fv(uMatrixLocation, 1, false, projectionMatrix, 0);
     }
 
     @Override
