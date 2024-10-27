@@ -34,7 +34,8 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setEGLContextClientVersion(2);
         //设置渲染器
         //glSurfaceView.setRenderer(new OpenGLESRenderer());
-        glSurfaceView.setRenderer(new AirHockeyRenderer(this));
+        //glSurfaceView.setRenderer(new AirHockeyRenderer(this));
+        glSurfaceView.setRenderer(new AirHockeyRenderer3D(this));
         //设置按请求刷新
         //glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
