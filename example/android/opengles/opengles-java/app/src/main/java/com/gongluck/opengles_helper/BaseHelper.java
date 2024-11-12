@@ -1,4 +1,4 @@
-package com.gongluck.opengles_java;
+package com.gongluck.opengles_helper;
 
 import android.content.Context;
 import android.util.Log;
@@ -8,11 +8,28 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import static android.opengl.GLES20.*;
+import static android.opengl.GLES20.GL_COMPILE_STATUS;
+import static android.opengl.GLES20.GL_FRAGMENT_SHADER;
+import static android.opengl.GLES20.GL_LINK_STATUS;
+import static android.opengl.GLES20.GL_VALIDATE_STATUS;
+import static android.opengl.GLES20.GL_VERTEX_SHADER;
+import static android.opengl.GLES20.glAttachShader;
+import static android.opengl.GLES20.glCompileShader;
+import static android.opengl.GLES20.glCreateProgram;
+import static android.opengl.GLES20.glCreateShader;
+import static android.opengl.GLES20.glDeleteProgram;
+import static android.opengl.GLES20.glDeleteShader;
+import static android.opengl.GLES20.glGetProgramInfoLog;
+import static android.opengl.GLES20.glGetProgramiv;
+import static android.opengl.GLES20.glGetShaderInfoLog;
+import static android.opengl.GLES20.glGetShaderiv;
+import static android.opengl.GLES20.glLinkProgram;
+import static android.opengl.GLES20.glShaderSource;
+import static android.opengl.GLES20.glValidateProgram;
 
-public class Utils {
+public class BaseHelper {
 
-    private static final String TAG = "Utils";
+    private static final String TAG = "BaseHelper";
 
     public static String readTextFileFromRawResource(final Context context,
                                                      final int resourceId) {
@@ -32,6 +49,7 @@ public class Utils {
                 body.append('\n');
             }
         } catch (IOException e) {
+            Log.e(TAG, e.toString());
             return null;
         }
 
@@ -45,6 +63,8 @@ public class Utils {
     public static int compileFragmentShader(String shaderCode) {
         return compileShader(GL_FRAGMENT_SHADER, shaderCode);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
 
     private static int compileShader(int type, String shaderCode) {
         //创建着色器

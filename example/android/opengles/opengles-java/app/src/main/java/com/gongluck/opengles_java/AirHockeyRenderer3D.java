@@ -3,6 +3,8 @@ package com.gongluck.opengles_java;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 
+import com.gongluck.opengles_helper.BaseHelper;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -65,18 +67,18 @@ public class AirHockeyRenderer3D implements GLSurfaceView.Renderer {
     public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-        String vertexShaderSource = Utils.readTextFileFromRawResource(context, R.raw.vertex_shader);
-        String fragmentShaderSource = Utils.readTextFileFromRawResource(context, R.raw.fragment_shader);
+        String vertexShaderSource = BaseHelper.readTextFileFromRawResource(context, R.raw.vertex_shader);
+        String fragmentShaderSource = BaseHelper.readTextFileFromRawResource(context, R.raw.fragment_shader);
 
         //编译opengl着色器代码
-        int vertexShader = Utils.compileVertexShader(vertexShaderSource);
-        int fragmentShader = Utils.compileFragmentShader(fragmentShaderSource);
+        int vertexShader = BaseHelper.compileVertexShader(vertexShaderSource);
+        int fragmentShader = BaseHelper.compileFragmentShader(fragmentShaderSource);
 
         //链接opengl程序
-        program = Utils.linkProgram(vertexShader, fragmentShader);
+        program = BaseHelper.linkProgram(vertexShader, fragmentShader);
 
         //验证opengl程序
-        Utils.validateProgram(program);
+        BaseHelper.validateProgram(program);
 
         //使用opengl程序
         glUseProgram(program);
