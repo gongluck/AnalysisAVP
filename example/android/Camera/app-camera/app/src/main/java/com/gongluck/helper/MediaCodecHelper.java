@@ -29,7 +29,7 @@ public class MediaCodecHelper {
     private int mIFrameInterval;
     private int mColorFormat;
 
-    VideoEncodeCallback mVideoEncodeCallback;
+    private VideoEncodeCallback mVideoEncodeCallback;
     private long mStartTime;
 
     private boolean mEncoding = false;
