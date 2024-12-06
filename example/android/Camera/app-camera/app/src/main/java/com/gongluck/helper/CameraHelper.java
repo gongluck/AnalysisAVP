@@ -1,4 +1,4 @@
-package com.gongluck.camera;
+package com.gongluck.helper;
 
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;

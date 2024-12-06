@@ -1,4 +1,4 @@
-package com.gongluck.camera;
+package com.gongluck.helper;
 
 import android.util.Log;
 
@@ -34,6 +34,19 @@ public class RotationHelper {
             yuv[framesize + j] = nv21[j + framesize - 1];
         }
         return yuv;
+    }
+
+    public byte[] Rotation(int rotation, byte[] src, int width, int height) {
+        switch(rotation % 360) {
+            case 90:
+                return Rotate90(src, width, height);
+            case 180:
+                return Rotate180(src, width, height);
+            case 270:
+                return Rotate270(src, width, height);
+            default:
+                return src;
+        }
     }
 
     public byte[] Rotate90(byte[] src, int width, int height) {

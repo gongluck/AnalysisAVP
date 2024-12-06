@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
@@ -20,7 +21,9 @@ import android.media.MediaCodecInfo.EncoderCapabilities;
 import android.media.MediaCodecInfo.CodecProfileLevel;
 import android.media.MediaCodecInfo.CodecCapabilities;
 import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.opengl.GLES11Ext;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -30,7 +33,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -40,11 +43,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.gongluck.helper.CameraHelper;
+import com.gongluck.helper.MediaCodecHelper;
+import com.gongluck.helper.MediaMuxerHelper;
+import com.gongluck.helper.RotationHelper;
+
 import static android.widget.ImageView.ScaleType;
 
+@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
 public class MainActivity extends AppCompatActivity {
 
     static final String TAG = "app-camera";
@@ -55,6 +65,10 @@ public class MainActivity extends AppCompatActivity {
     //MediaCodecAPI封装
     private MediaCodecHelper mMediaCodecHelper = new MediaCodecHelper();
     private byte[] mSpsPps = null;
+
+    //MediaMuxerAPI封装
+    private MediaMuxerHelper mMediaMuxerHelper = new MediaMuxerHelper();
+    private int mVideoIndex;
 
     //旋转工具
     private RotationHelper mRotationHelper = new RotationHelper();
@@ -80,7 +94,10 @@ public class MainActivity extends AppCompatActivity {
     private String mTakePictureJpegPath = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_takepicture-jpg.jpg";
     //视频文件路径
     private String mH264Path = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_encode.h264";
+    private String mH265Path = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_encode.h265";
+    private String mOtherPath = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_encode.other";
     private BufferedOutputStream mBufferedOutputStream = null;
+    private String mMP4Path = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_encode.mp4";
 
     //旋转角度
     private int mRotation;
@@ -89,6 +106,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean mUsefacing = false;
     //使用SurfaceView预览
     private boolean mUseSurfacePreview = false;
+    //编码类型
+    private String mMine = MediaFormat.MIMETYPE_VIDEO_HEVC;
 
     //预览纹理和缓冲区
     private SurfaceTexture mSurfaceTexture = new SurfaceTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES);
@@ -143,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
 
     // 处理权限请求结果
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -276,13 +295,31 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             //开始预览
-            if(!mCameraHelper.StartPreview()){
+            if (!mCameraHelper.StartPreview()) {
                 Log.e(TAG, "start camera preview failed");
                 return;
             }
 
             //拍照
             takePicture();
+
+            //创建封装
+            if (!mMediaMuxerHelper.OpenMux(mMP4Path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)) {
+                Log.e(TAG, "open muxer failed");
+                return;
+            }
+
+            switch (mMine) {
+                case MediaFormat.MIMETYPE_VIDEO_AVC:
+                    mBufferedOutputStream = new BufferedOutputStream(new FileOutputStream(new File(mH264Path)));
+                    break;
+                case MediaFormat.MIMETYPE_VIDEO_HEVC:
+                    mBufferedOutputStream = new BufferedOutputStream(new FileOutputStream(new File(mH265Path)));
+                    break;
+                default:
+                    mBufferedOutputStream = new BufferedOutputStream(new FileOutputStream(new File(mOtherPath)));
+                    break;
+            }
 
             //获取编解码器信息
             List<MediaCodecInfo> infos = new ArrayList<>();
@@ -293,28 +330,26 @@ public class MainActivity extends AppCompatActivity {
             //设置编码参数
             int vwidth = mWidth;
             int vheight = mHeight;
-            if(mRotation % 180 != 0) {
+            if (mRotation % 180 != 0) {
                 vwidth = mHeight;
                 vheight = mWidth;
             }
-            if(!mMediaCodecHelper.SetVideoEncodeParams(MediaFormat.MIMETYPE_VIDEO_AVC, vwidth, vheight, CodecProfileLevel.AVCProfileBaseline, CodecProfileLevel.AVCLevel1, EncoderCapabilities.BITRATE_MODE_CBR,
-                    mWidth * mHeight / 10, 30, 1, CodecCapabilities.COLOR_FormatYUV420SemiPlanar)){
+            if (!mMediaCodecHelper.SetVideoEncodeParams(mMine, vwidth, vheight, CodecProfileLevel.AVCProfileBaseline, CodecProfileLevel.AVCLevel1, EncoderCapabilities.BITRATE_MODE_CBR,
+                    1000000, 30, 1, CodecCapabilities.COLOR_FormatYUV420SemiPlanar)) {
                 Log.e(TAG, "set video encode params failed");
                 return;
-            };
+            }
 
-            if(!mMediaCodecHelper.SetVideoEncodeCallback(mVideoEncodeCallback)){
+            if (!mMediaCodecHelper.SetVideoEncodeCallback(mVideoEncodeCallback)) {
                 Log.e(TAG, "set video encode callback failed");
                 return;
-            };
+            }
 
             //开始编码
-            if(!mMediaCodecHelper.StartEncodeByType(MediaFormat.MIMETYPE_VIDEO_AVC)){
+            if (!mMediaCodecHelper.StartEncodeByType(mMine)) {
                 Log.e(TAG, "start encode failed");
                 return;
-            };
-
-            mBufferedOutputStream = new BufferedOutputStream(new FileOutputStream(new File(mH264Path)));
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -334,6 +369,8 @@ public class MainActivity extends AppCompatActivity {
                 mBufferedOutputStream.flush();
                 mBufferedOutputStream.close();
             }
+
+            mMediaMuxerHelper.StopMux();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -362,7 +399,7 @@ public class MainActivity extends AppCompatActivity {
                 int width = mWidth;
                 int height = mHeight;
                 //Log.d(TAG, "image view size: " + mImageView.getWidth() + " x " + mImageView.getHeight());
-                switch(mRotation) {
+                switch (mRotation) {
                     case 90:
                         input = mRotationHelper.Rotate90(input, mWidth, mHeight);
                         width = mHeight;
@@ -377,7 +414,7 @@ public class MainActivity extends AppCompatActivity {
                         height = mWidth;
                         break;
                 }
-                if(mUsefacing) {
+                if (mUsefacing) {
                     mRotationHelper.Mirror(input, width, height);
                 }
 
@@ -456,6 +493,18 @@ public class MainActivity extends AppCompatActivity {
                     public void onPictureTaken(byte[] data, Camera camera) {
                         try {
                             saveToFile(data, mTakePictureJpegPath);
+
+                            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                            Matrix matrix = new Matrix();
+                            matrix.postRotate(mRotation);
+                            bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
+                            //保存jpeg
+                            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+                            saveToFile(stream.toByteArray(), mTakePictureJpegPath);
+                            stream.close();
+                            bitmap.recycle();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
@@ -468,24 +517,40 @@ public class MainActivity extends AppCompatActivity {
 
     MediaCodecHelper.VideoEncodeCallback mVideoEncodeCallback = new MediaCodecHelper.VideoEncodeCallback() {
         @Override
-        public void EncodeCallback(MediaCodec.BufferInfo info, byte[] data) {
+        public void EncodeCallback(MediaCodec.BufferInfo info, ByteBuffer buffer) {
             try {
+                byte[] data = new byte[info.size];
+                buffer.get(data);
+
+                if (!mMediaMuxerHelper.WriteSample(mVideoIndex, buffer, info)) {
+                    Log.e(TAG, "write video data failed");
+                }
+                //Log.d(TAG, "timestamp: " + (info.presentationTimeUs / 1000) + "ms");
+
                 switch (info.flags) {
                     case MediaCodec.BUFFER_FLAG_CODEC_CONFIG://sps pps
-                        mSpsPps = new byte[info.size];
                         mSpsPps = data;
                         break;
                     case MediaCodec.BUFFER_FLAG_KEY_FRAME://I
                         byte[] keyframe = new byte[info.size + mSpsPps.length];
                         System.arraycopy(mSpsPps, 0, keyframe, 0, mSpsPps.length);
-                        System.arraycopy(data, 0, keyframe, mSpsPps.length, data.length);
+                        System.arraycopy(data, 0, keyframe, mSpsPps.length, info.size);
                         mBufferedOutputStream.write(keyframe, 0, keyframe.length);
                     default:
-                        mBufferedOutputStream.write(data, 0, data.length);
+                        mBufferedOutputStream.write(data, 0, info.size);
                         break;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void OutputFormatChange(MediaFormat format) {
+            mVideoIndex = mMediaMuxerHelper.AddTrack(format);
+            if (!mMediaMuxerHelper.StartMux()) {
+                Log.e(TAG, "start muxer failed");
+                return;
             }
         }
     };

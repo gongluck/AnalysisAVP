@@ -1,4 +1,4 @@
-package com.gongluck.camera;
+package com.gongluck.helper;
 
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
@@ -6,7 +6,6 @@ import android.media.MediaCodecList;
 import android.media.MediaFormat;
 import android.util.Log;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -31,6 +30,7 @@ public class MediaCodecHelper {
     private int mColorFormat;
 
     VideoEncodeCallback mVideoEncodeCallback;
+    private long mStartTime;
 
     private boolean mEncoding = false;
     private int mQueueSize = 60;
@@ -77,10 +77,11 @@ public class MediaCodecHelper {
     }
 
     //设置视频编码回调
-    public interface VideoEncodeCallback
-    {
-        void EncodeCallback(MediaCodec.BufferInfo info, byte[] data);
+    public interface VideoEncodeCallback {
+        void EncodeCallback(MediaCodec.BufferInfo info, ByteBuffer buffer);
+        void OutputFormatChange(MediaFormat format);
     }
+
     public boolean SetVideoEncodeCallback(VideoEncodeCallback cb) {
         if (mMediaCodec != null) {
             Log.e(TAG, "have opened encoder.");
@@ -130,6 +131,7 @@ public class MediaCodecHelper {
             }
         }
         mEncodeThread = null;
+        mStartTime = 0;
 
         mMediaCodec.stop();
         mMediaCodec.release();
@@ -199,24 +201,32 @@ public class MediaCodecHelper {
                             ByteBuffer inputBuffer = mMediaCodec.getInputBuffers()[inputBufferIndex];
                             inputBuffer.clear();
                             inputBuffer.put(input);
-                            mMediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, System.nanoTime()/*微秒*/, 0);
+                            mMediaCodec.queueInputBuffer(inputBufferIndex, 0, input.length, (System.nanoTime() - mStartTime) / 1000/*微秒*/, 0);
                         }
-
                         //取出编码数据
                         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
                         int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, mTimeOutus);
-                        while (outputBufferIndex >= 0) { //输出队列有可用缓冲区
-                            ByteBuffer outputBuffer = mMediaCodec.getOutputBuffers()[outputBufferIndex];
-                            byte[] outData = new byte[bufferInfo.size];
-                            outputBuffer.get(outData);
+                        switch (outputBufferIndex) {
+                            case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                                MediaFormat format = mMediaCodec.getOutputFormat();
+                                if(mVideoEncodeCallback != null) {
+                                    mVideoEncodeCallback.OutputFormatChange(format);
+                                }
+                                break;
+                            default: {
+                                while (outputBufferIndex >= 0) { //输出队列有可用缓冲区
+                                    if (mVideoEncodeCallback != null) {
+                                        ByteBuffer outputBuffer = mMediaCodec.getOutputBuffers()[outputBufferIndex];
+                                        mVideoEncodeCallback.EncodeCallback(bufferInfo, outputBuffer);
+                                    }
 
-                            if(mVideoEncodeCallback != null) {
-                                mVideoEncodeCallback.EncodeCallback(bufferInfo, outData);
+                                    mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                                    outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, mTimeOutus);
+                                }
                             }
-
-                            mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-                            outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, mTimeOutus);
+                            break;
                         }
+
                     } else {//队列为空
                         try {
                             Thread.sleep(10);
@@ -227,6 +237,7 @@ public class MediaCodecHelper {
                 }
             }
         });
+        mStartTime = System.nanoTime();
         mEncodeThread.start();
 
         return true;
