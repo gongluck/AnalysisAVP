@@ -105,7 +105,7 @@ public class MainActivity extends AppCompatActivity {
     //是否使用前置摄像头
     private boolean mUsefacing = false;
     //使用SurfaceView预览
-    private boolean mUseSurfacePreview = false;
+    private boolean mUseSurfacePreview = true;
     //编码类型
     private String mMine = MediaFormat.MIMETYPE_VIDEO_HEVC;
 
