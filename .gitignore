@@ -27,6 +27,7 @@ Samples
 *.so
 *.iml
 #*.gradle
+.gradle/
 *.idea
 **/local.properties
 **/.DS_Store
