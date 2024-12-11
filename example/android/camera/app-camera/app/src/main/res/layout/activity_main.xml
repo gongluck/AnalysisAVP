@@ -38,19 +38,39 @@
         tools:ignore="MissingConstraints"></ImageView>
 
     <Button
-        android:id="@+id/btn_start"
+        android:id="@+id/btn_start_front"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="开始"
+        android:text="front"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
+    <Button
+        android:id="@+id/btn_start_front_surface"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="front_Surface"
+        app:layout_constraintLeft_toRightOf="@+id/btn_start_front"
+        app:layout_constraintTop_toTopOf="parent" />
+    <Button
+        android:id="@+id/btn_start_back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="back"
+        app:layout_constraintLeft_toRightOf="@+id/btn_start_front_surface"
+        app:layout_constraintTop_toTopOf="parent" />
+    <Button
+        android:id="@+id/btn_start_back_surface"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="back_Surface"
+        app:layout_constraintLeft_toRightOf="@+id/btn_start_back"
+        app:layout_constraintTop_toTopOf="parent" />
     <Button
         android:id="@+id/btn_stop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="结束"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

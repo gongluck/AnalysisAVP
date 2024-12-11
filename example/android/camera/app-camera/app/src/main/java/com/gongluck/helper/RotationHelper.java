@@ -8,36 +8,19 @@ public class RotationHelper {
 
     //根据系统角度计算旋转角度
     //systemOrientation 逆时针
-    //返回 顺时针
+    //返回 顺时针 也就是正常显示应该顺时针转的角度
     public int CaluateRotation(boolean facing, int cameraRotation, int systemOrientation) {
         //https://blog.csdn.net/qq_18757521/article/details/99711438
-        int cameraOrientation = cameraRotation;
-        Log.d(TAG, "system: " + systemOrientation + ", camera: " + cameraOrientation + ", facing: " + facing);
+        Log.d(TAG, "facing: " + facing + ", cameraRotation: " + cameraRotation + ", systemOrientation: " + systemOrientation);
         if (facing) {
-            return (cameraOrientation + 90 * systemOrientation) % 360;
+            return (cameraRotation + 90 * systemOrientation) % 360;
         } else {
-            return (180 + cameraOrientation - 90 * systemOrientation + 360) % 360;
+            return (720 - (cameraRotation + 90 * systemOrientation)) % 360;
         }
-    }
-
-    public byte[] NV21ToNV12(byte[] nv21, int width, int height) {
-        byte[] yuv = new byte[width * height * 3 / 2];
-        int framesize = width * height;
-        int i = 0, j = 0;
-        for (i = 0; i < framesize; i++) {
-            yuv[i] = nv21[i];
-        }
-        for (j = 0; j < framesize / 2; j += 2) {
-            yuv[framesize + j - 1] = nv21[j + framesize];
-        }
-        for (j = 0; j < framesize / 2; j += 2) {
-            yuv[framesize + j] = nv21[j + framesize - 1];
-        }
-        return yuv;
     }
 
     public byte[] Rotation(int rotation, byte[] src, int width, int height) {
-        switch(rotation % 360) {
+        switch (rotation % 360) {
             case 90:
                 return Rotate90(src, width, height);
             case 180:

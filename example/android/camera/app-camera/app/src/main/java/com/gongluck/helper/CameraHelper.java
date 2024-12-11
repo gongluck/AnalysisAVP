@@ -241,7 +241,7 @@ public class CameraHelper {
             return false;
         }
 
-        mCamera.setDisplayOrientation(rotation);
+        mCamera.setDisplayOrientation(mFacing ? (360 - rotation) % 360 : rotation);
 
         return true;
     }

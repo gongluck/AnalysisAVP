@@ -160,6 +160,11 @@ public class MediaCodecHelper {
 
     //输入待编码数据
     public boolean InputBuffer(byte[] buffer) {
+        if (mMediaCodec == null) {
+            Log.e(TAG, "have not opened encoder.");
+            return false;
+        }
+
         while (mInputQueue.size() >= mQueueSize) {
             Log.w(TAG, "input queue full");
             mInputQueue.poll();

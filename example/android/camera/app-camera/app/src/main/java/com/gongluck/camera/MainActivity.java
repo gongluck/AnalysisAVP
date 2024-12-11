@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gongluck.helper.CameraHelper;
+import com.gongluck.helper.FormatCovertHelper;
 import com.gongluck.helper.MediaCodecHelper;
 import com.gongluck.helper.MediaMuxerHelper;
 import com.gongluck.helper.RotationHelper;
@@ -73,10 +74,16 @@ public class MainActivity extends AppCompatActivity {
     //旋转工具
     private RotationHelper mRotationHelper = new RotationHelper();
 
+    //格式工具
+    private FormatCovertHelper mFormatCovertHelper = new FormatCovertHelper();
+
     //控件
     private SurfaceView mSurfaceView = null;
     private ImageView mImageView = null;
-    private Button mStart = null;
+    private Button mStartFront = null;
+    private Button mStartFrontSurface = null;
+    private Button mStartBack = null;
+    private Button mStartBackSurface = null;
     private Button mStop = null;
 
     //相机图像参数
@@ -105,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
     //是否使用前置摄像头
     private boolean mUsefacing = false;
     //使用SurfaceView预览
-    private boolean mUseSurfacePreview = true;
+    private boolean mUseSurfacePreview = false;
     //编码类型
     private String mMine = MediaFormat.MIMETYPE_VIDEO_HEVC;
 
@@ -127,19 +134,41 @@ public class MainActivity extends AppCompatActivity {
         //控件
         mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
         mImageView = (ImageView) findViewById(R.id.imageView);
-        mStart = (Button) findViewById(R.id.btn_start);
+        mStartFront = (Button) findViewById(R.id.btn_start_front);
+        mStartFrontSurface = (Button) findViewById(R.id.btn_start_front_surface);
+        mStartBack = (Button) findViewById(R.id.btn_start_back);
+        mStartBackSurface = (Button) findViewById(R.id.btn_start_back_surface);
         mStop = (Button) findViewById(R.id.btn_stop);
         final Activity thiz = this;
-        mStart.setOnClickListener(
+        mStartFront.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        if (ContextCompat.checkSelfPermission(thiz, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                            Log.d(TAG, "request camera permission");
-                            ActivityCompat.requestPermissions(thiz, new String[]{Manifest.permission.CAMERA}, mRequestCodeCamera);
-                        } else {
-                            onCameraOpen();
-                        }
+                        onOpen(thiz, true, false);
+                    }
+                }
+        );
+        mStartFrontSurface.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        onOpen(thiz, true, true);
+                    }
+                }
+        );
+        mStartBack.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        onOpen(thiz, false, false);
+                    }
+                }
+        );
+        mStartBackSurface.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        onOpen(thiz, false, true);
                     }
                 }
         );
@@ -172,6 +201,17 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, requestCode + " permission is required for this feature", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    void onOpen(Activity context, boolean useFacing, boolean useSurfacePreview) {
+        mUsefacing = useFacing;
+        mUseSurfacePreview = useSurfacePreview;
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "request camera permission");
+            ActivityCompat.requestPermissions(context, new String[]{Manifest.permission.CAMERA}, mRequestCodeCamera);
+        } else {
+            onCameraOpen();
         }
     }
 
@@ -266,6 +306,9 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "rotation: " + mRotation);
 
         if (mUseSurfacePreview) {
+            mImageView.setVisibility(View.INVISIBLE);
+            mSurfaceView.setVisibility(View.VISIBLE);
+
             //预览旋转
             if (!mCameraHelper.SetDisplayOrientation(mRotation)) {
                 Log.e(TAG, "set camera display rotation failed");
@@ -282,6 +325,8 @@ public class MainActivity extends AppCompatActivity {
             }
         } else {
             mSurfaceView.setVisibility(View.INVISIBLE);
+            mImageView.setVisibility(View.VISIBLE);
+
             //预览纹理
             try {
                 if (!mCameraHelper.SetPreviewTexture(mSurfaceTexture)) {
@@ -447,7 +492,7 @@ public class MainActivity extends AppCompatActivity {
 
                 stream.close();
 
-                input = mRotationHelper.NV21ToNV12(input, width, height);
+                mFormatCovertHelper.NV21ToNV12(input, width, height);
                 //推送待编码数据
                 mMediaCodecHelper.InputBuffer(input);
             } catch (Exception e) {
@@ -492,7 +537,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onPictureTaken(byte[] data, Camera camera) {
                         try {
-                            saveToFile(data, mTakePictureJpegPath);
+                            //saveToFile(data, mTakePictureJpegPath);
 
                             Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
                             Matrix matrix = new Matrix();
