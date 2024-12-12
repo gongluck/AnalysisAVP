@@ -19,6 +19,7 @@ public class RotationHelper {
         }
     }
 
+    //顺时针旋转
     public byte[] Rotation(int rotation, byte[] src, int width, int height) {
         switch (rotation % 360) {
             case 90:

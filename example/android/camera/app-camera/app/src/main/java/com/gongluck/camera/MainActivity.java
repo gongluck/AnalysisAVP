@@ -88,8 +88,9 @@ public class MainActivity extends AppCompatActivity {
 
     //相机图像参数
     private List<Integer> mFormat = new ArrayList<>();
-    private int mWidth;
-    private int mHeight;
+    private boolean mForceSize = true;
+    private int mWidth = 1280;
+    private int mHeight = 720;
 
     //数据保存路径
     private String mPreviewCallbackRawPath = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_preview-callback-raw.yuv";
@@ -239,10 +240,12 @@ public class MainActivity extends AppCompatActivity {
         }
         for (Size s : supportedPictureSizes) {
             Log.i(TAG, "got support picture size: " + s.width + " x " + s.height);
-            if (s.width <= 1920 && s.height <= 1920 && s.width >= 360 && s.height >= 360) {
-                Log.i(TAG, "use size: " + s.width + " x " + s.height);
-                mWidth = s.width;
-                mHeight = s.height;
+            if (!mForceSize) {
+                if (s.width <= 1920 && s.height <= 1920 && s.width >= 360 && s.height >= 360) {
+                    Log.i(TAG, "use size: " + s.width + " x " + s.height);
+                    mWidth = s.width;
+                    mHeight = s.height;
+                }
             }
         }
         for (int f : supportedPreviewFormats) {
@@ -250,10 +253,12 @@ public class MainActivity extends AppCompatActivity {
         }
         for (Size s : supportedPreviewSizes) {
             Log.i(TAG, "got support preview size : " + s.width + " x " + s.height);
-            if (s.width <= 1920 && s.height <= 1920 && s.width >= 360 && s.height >= 360) {
-                Log.i(TAG, "use size: " + s.width + " x " + s.height);
-                mWidth = s.width;
-                mHeight = s.height;
+            if (!mForceSize) {
+                if (s.width <= 1920 && s.height <= 1920 && s.width >= 360 && s.height >= 360) {
+                    Log.i(TAG, "use size: " + s.width + " x " + s.height);
+                    mWidth = s.width;
+                    mHeight = s.height;
+                }
             }
         }
 
