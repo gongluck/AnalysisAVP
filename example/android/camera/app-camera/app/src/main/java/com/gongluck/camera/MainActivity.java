@@ -51,6 +51,7 @@ import com.gongluck.helper.CameraHelper;
 import com.gongluck.helper.FormatCovertHelper;
 import com.gongluck.helper.MediaCodecHelper;
 import com.gongluck.helper.MediaMuxerHelper;
+import com.gongluck.helper.PermissionHelper;
 import com.gongluck.helper.RotationHelper;
 
 import static android.widget.ImageView.ScaleType;
@@ -76,6 +77,9 @@ public class MainActivity extends AppCompatActivity {
 
     //格式工具
     private FormatCovertHelper mFormatCovertHelper = new FormatCovertHelper();
+
+    //权限工具
+    PermissionHelper mPermissionHelper = new PermissionHelper();
 
     //控件
     private SurfaceView mSurfaceView = null;
@@ -182,12 +186,7 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
 
-        //https://blog.csdn.net/2301_79985012/article/details/138266064
-        if (ContextCompat.checkSelfPermission(thiz, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(thiz, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "request file permission");
-            ActivityCompat.requestPermissions(thiz, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE,}, mRequestCodeStorage);
-        }
+        mPermissionHelper.CheckPermission(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, mRequestCodeStorage);
     }
 
     // 处理权限请求结果
@@ -208,10 +207,7 @@ public class MainActivity extends AppCompatActivity {
     void onOpen(Activity context, boolean useFacing, boolean useSurfacePreview) {
         mUsefacing = useFacing;
         mUseSurfacePreview = useSurfacePreview;
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "request camera permission");
-            ActivityCompat.requestPermissions(context, new String[]{Manifest.permission.CAMERA}, mRequestCodeCamera);
-        } else {
+        if (mPermissionHelper.CheckPermission(context, new String[]{Manifest.permission.CAMERA}, mRequestCodeCamera)) {
             onCameraOpen();
         }
     }
