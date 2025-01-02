@@ -35,8 +35,6 @@ import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,7 +54,7 @@ import com.gongluck.helper.RotationHelper;
 
 import static android.widget.ImageView.ScaleType;
 
-@RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+@RequiresApi(api = Build.VERSION_CODES.O)
 public class MainActivity extends AppCompatActivity {
 
     static final String TAG = "app-camera";
@@ -437,7 +435,7 @@ public class MainActivity extends AppCompatActivity {
             //Log.d(TAG, "preview frame data length: " + data.length);
             try {
                 //保存yuv
-                saveToFile(data, mPreviewCallbackRawPath);
+                mFormatCovertHelper.SaveFile(data, mPreviewCallbackRawPath);
 
                 //对数据裁剪旋转到正常显示
                 byte[] input = new byte[mWidth * mHeight * 3 / 2];
@@ -465,7 +463,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 //保存yuv
-                saveToFile(input, mPreviewCallbackRawRotationPath);
+                mFormatCovertHelper.SaveFile(input, mPreviewCallbackRawRotationPath);
 
                 //YuvImage
                 YuvImage yuvImg = new YuvImage(input, mFormat.get(0), width, height, null);
@@ -473,7 +471,7 @@ public class MainActivity extends AppCompatActivity {
                 //保存jpeg
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 yuvImg.compressToJpeg(new Rect(0, 0, yuvImg.getWidth(), yuvImg.getHeight()), 100, stream);
-                saveToFile(stream.toByteArray(), mPreviewCallbackJpgPath);
+                mFormatCovertHelper.SaveFile(stream.toByteArray(), mPreviewCallbackJpgPath);
 
                 if (!mUseSurfacePreview) {
                     //显示到imageview
@@ -517,28 +515,20 @@ public class MainActivity extends AppCompatActivity {
                             Log.e(TAG, "raw data is null");
                             return;
                         }
-                        try {
-                            saveToFile(data, mTakePictureRawPath);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        mFormatCovertHelper.SaveFile(data, mTakePictureRawPath);
+                    }
+                },
+                new PictureCallback() {
+                    @Override
+                    public void onPictureTaken(byte[] data, Camera camera) {
+                        mFormatCovertHelper.SaveFile(data, mTakePicturePostviewPath);
                     }
                 },
                 new PictureCallback() {
                     @Override
                     public void onPictureTaken(byte[] data, Camera camera) {
                         try {
-                            saveToFile(data, mTakePicturePostviewPath);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                },
-                new PictureCallback() {
-                    @Override
-                    public void onPictureTaken(byte[] data, Camera camera) {
-                        try {
-                            //saveToFile(data, mTakePictureJpegPath);
+                            //mFormatCovertHelper.SaveFile(data, mTakePictureJpegPath);
 
                             Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
                             Matrix matrix = new Matrix();
@@ -548,7 +538,7 @@ public class MainActivity extends AppCompatActivity {
                             //保存jpeg
                             ByteArrayOutputStream stream = new ByteArrayOutputStream();
                             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
-                            saveToFile(stream.toByteArray(), mTakePictureJpegPath);
+                            mFormatCovertHelper.SaveFile(stream.toByteArray(), mTakePictureJpegPath);
                             stream.close();
                             bitmap.recycle();
                         } catch (IOException e) {
@@ -600,18 +590,4 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////
-
-    //保存数据
-    private void saveToFile(byte[] data, String path) throws IOException {
-        File file = new File(path);
-        if (file.exists()) {
-            file.delete();
-        }
-        BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file));
-        outputStream.write(data, 0, data.length);
-        outputStream.flush();
-        outputStream.close();
-    }
 }

@@ -2,6 +2,10 @@ package com.gongluck.helper;
 
 import android.util.Log;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+
 public class FormatCovertHelper {
 
     static final String TAG = "FormatCovertHelper";
@@ -24,6 +28,24 @@ public class FormatCovertHelper {
             yuv420[frameSize + 2 * i + 1] = uvData[i];
         }
         return true;
+    }
+
+    public boolean CutStride(byte[] src, int width, int height, int pixel, int stride, byte[] dst) {
+        for (int i = 0; i < height; i++) {
+            System.arraycopy(src, i * stride * pixel, dst, i * width * pixel, width * pixel);
+        }
+        return true;
+    }
+
+    public void SaveFile(byte[] data, String path) {
+        try {
+            BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(new File(path)));
+            outputStream.write(data, 0, data.length);
+            outputStream.flush();
+            outputStream.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////

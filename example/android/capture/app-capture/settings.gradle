@@ -1,0 +1,2 @@
+rootProject.name='capture'
+include ':app'
