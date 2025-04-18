@@ -8,6 +8,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
@@ -53,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     //数据保存路径
     private String mCaptureRawPath = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_capture-raw.rgb";
+    private String mCapturePngPath = Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_capture.png";
 
     //权限
     private int mRequestCodeCapture = 1;
@@ -94,6 +96,10 @@ public class MainActivity extends AppCompatActivity {
                             byte[] dataNoStride = new byte[data.length];
                             mFormatCovertHelper.CutStride(data, mWidth, mHeight, plane.getPixelStride(), plane.getRowStride() / plane.getPixelStride(), dataNoStride);
                             mFormatCovertHelper.SaveFile(dataNoStride, mCaptureRawPath);
+
+                            byte[] jpg = mFormatCovertHelper.CovertToPicture(dataNoStride, mWidth, mHeight, Bitmap.Config.ARGB_8888,
+                                    Bitmap.CompressFormat.JPEG, ((int)mImageCount%10+1)*10);
+                            mFormatCovertHelper.SaveFile(jpg, Environment.getExternalStorageDirectory().getPath() + "/Download/" + TAG + "_capture" + "_" + ((int)mImageCount%10+1)*10 + ".png");
 
                             ++mImageCount;
                             long now = System.currentTimeMillis();

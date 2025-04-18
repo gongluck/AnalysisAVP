@@ -1,10 +1,13 @@
 package com.gongluck.helper;
 
+import android.graphics.Bitmap;
 import android.util.Log;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
 
 public class FormatCovertHelper {
 
@@ -35,6 +38,14 @@ public class FormatCovertHelper {
             System.arraycopy(src, i * stride * pixel, dst, i * width * pixel, width * pixel);
         }
         return true;
+    }
+
+    public byte[] CovertToPicture(byte[] data, int width, int height, Bitmap.Config config, Bitmap.CompressFormat format, int quality) {
+            Bitmap bitmap = Bitmap.createBitmap(width, height, config);
+            bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(data));
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            bitmap.compress(format, quality, outputStream);
+            return outputStream.toByteArray();
     }
 
     public void SaveFile(byte[] data, String path) {
